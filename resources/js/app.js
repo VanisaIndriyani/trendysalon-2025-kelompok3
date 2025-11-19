@@ -406,10 +406,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const apiUrl = (window.__SCAN_ROUTES__ && window.__SCAN_ROUTES__.apiModels) ? window.__SCAN_ROUTES__.apiModels : '../api/recommendations/hair-models';
             const resp = await fetch(`${apiUrl}?face_shape=${encodeURIComponent(apiFaceShape)}`);
-            const data = await resp.json();
-            if (Array.isArray(data) && data.length) {
+            const json = await resp.json();
+            const items = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
+            if (items.length) {
                 // Map data to expected render format
-                render(data.map(m => ({ name: m.name, image_url: m.image || m.illustration_url })));
+                render(items.map(m => ({ name: m.name, image_url: m.image || m.illustration_url })));
             }
         } catch (e) {
             // Silent fallback

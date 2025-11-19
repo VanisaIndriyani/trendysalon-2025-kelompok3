@@ -305,24 +305,28 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const apiUrl = (window.__SCAN_ROUTES__ && window.__SCAN_ROUTES__.apiModels) ? window.__SCAN_ROUTES__.apiModels : '../api/recommendations/hair-models';
             const res = await fetch(`${apiUrl}?face_shape=${encodeURIComponent(apiFaceShape)}`);
-            const data = await res.json();
+            const json = await res.json();
+            const items = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []);
             loading?.classList.add('hidden');
-            if (!Array.isArray(data) || data.length === 0) {
+            if (!items.length) {
                 list.innerHTML = '<p class="text-xs text-stone-600">Belum ada rekomendasi untuk bentuk wajah ini.</p>';
                 return;
             }
 
-            list.innerHTML = data.map((m) => `
-                <button class="group rounded-xl border border-stone-200 bg-white p-3 text-left shadow hover:shadow-md" data-overlay="${m.illustration_url || ''}">
+            list.innerHTML = items.map((m) => {
+                const imgUrl = m.image || m.illustration_url || '';
+                return `
+                <button class="group rounded-xl border border-stone-200 bg-white p-3 text-left shadow hover:shadow-md" data-overlay="${imgUrl}">
                     <div class="flex items-center gap-3">
-                        <img src="${m.illustration_url || ''}" alt="${m.name || 'Model'}" class="h-14 w-14 rounded-lg object-cover">
+                        <img src="${imgUrl}" alt="${m.name || 'Model'}" class="h-14 w-14 rounded-lg object-cover">
                         <div>
                             <p class="text-sm font-semibold">${m.name || 'Model'}</p>
-                            <p class="text-xs text-stone-600">${m.hair_length || ''} • ${m.hair_type || ''}</p>
+                            <p class="text-xs text-stone-600">${m.length || m.hair_length || ''} • ${m.types || m.hair_type || ''}</p>
                         </div>
                     </div>
                 </button>
-            `).join('');
+                `;
+            }).join('');
 
             // Bind try-on overlay
             list.querySelectorAll('button[data-overlay]').forEach((btn) => {
