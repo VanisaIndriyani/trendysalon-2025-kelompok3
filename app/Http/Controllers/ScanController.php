@@ -18,22 +18,20 @@ class ScanController extends Controller
         $pref = $request->input('pref', []);
         $userName = $request->input('user_name');
         $userPhone = $request->input('user_phone');
-        if (!$dataUrl || !Str::startsWith($dataUrl, 'data:image')) {
-            return response()->json([
-                'ok' => false,
-                'message' => 'Invalid image data',
-            ], 422);
-        }
+        $hasValidImage = $dataUrl && Str::startsWith($dataUrl, 'data:image');
 
-        // Persist capture (optional for auditing)
-        try {
-            [$meta, $content] = explode(',', $dataUrl, 2);
-            $binary = base64_decode($content);
-            $filename = 'scans/'.date('Ymd_His').'_'.Str::random(6).'.jpg';
-            Storage::disk('public')->put($filename, $binary);
-            $storedUrl = asset('storage/'.$filename);
-        } catch (\Throwable $e) {
-            $storedUrl = null;
+        // Persist capture (optional for auditing) hanya jika gambar valid
+        $storedUrl = null;
+        if ($hasValidImage) {
+            try {
+                [$meta, $content] = explode(',', $dataUrl, 2);
+                $binary = base64_decode($content);
+                $filename = 'scans/'.date('Ymd_His').'_'.Str::random(6).'.jpg';
+                Storage::disk('public')->put($filename, $binary);
+                $storedUrl = asset('storage/'.$filename);
+            } catch (\Throwable $e) {
+                $storedUrl = null;
+            }
         }
 
         // Content-Based Filtering: skor model rambut berdasarkan face_shape + preferensi
