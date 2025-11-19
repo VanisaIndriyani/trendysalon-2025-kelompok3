@@ -92,8 +92,10 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.setItem('prefCondition', (condition && condition.value) || '');
         } catch {}
 
-        const target = submit.getAttribute('data-target') || '/scan/camera';
-        window.location.href = target;
+        // Gunakan path relatif agar bekerja di subdirektori (mis. /trendysalon/public)
+        const target = submit.getAttribute('data-target') || 'scan/camera';
+        const nextUrl = new URL(target, window.location.href).toString();
+        window.location.href = nextUrl;
     });
 });
 
@@ -156,7 +158,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             sessionStorage.setItem('scanImage', dataUrl);
             sessionStorage.setItem('faceShape', faceShape);
         } catch {}
-        window.location.href = '/scan/results';
+        // Bangun URL hasil berbasis lokasi saat ini agar base path ikut terbawa
+        const resultsUrl = new URL('scan/results', window.location.href).toString();
+        window.location.href = resultsUrl;
     });
 });
 

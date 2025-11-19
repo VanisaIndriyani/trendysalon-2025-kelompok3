@@ -230,7 +230,7 @@
                         document.getElementById('edit-name').value = btn.getAttribute('data-name') || '';
                         document.getElementById('edit-types').value = btn.getAttribute('data-types') || '';
                         document.getElementById('edit-length').value = btn.getAttribute('data-length') || 'Panjang';
-                        document.getElementById('form-edit').setAttribute('action', `/super/models/${id}`);
+                        document.getElementById('form-edit').setAttribute('action', `{{ url('/super/models') }}/${id}`);
                         const hiddenId = document.getElementById('edit-id');
                         if (hiddenId) hiddenId.value = id;
                         // Preselect face shapes
@@ -273,7 +273,7 @@
                         const id = btn.getAttribute('data-id');
                         const name = btn.getAttribute('data-name');
                         document.getElementById('delete-name').textContent = name || '';
-                        document.getElementById('form-delete').setAttribute('action', `/super/models/${id}`);
+                        document.getElementById('form-delete').setAttribute('action', `{{ url('/super/models') }}/${id}`);
                         openModal(modalDelete);
                     });
                 });
@@ -324,7 +324,7 @@
                     const ctx = '{{ old('context') }}';
                     const oldId = '{{ old('id') }}';
                     if (hadErrors && ctx === 'super-edit') {
-                        if (oldId) document.getElementById('form-edit')?.setAttribute('action', `/super/models/${oldId}`);
+            if (oldId) document.getElementById('form-edit')?.setAttribute('action', `{{ url('/super/models') }}/${oldId}`);
                         openModal(modalEdit);
                     }
                 } catch {}

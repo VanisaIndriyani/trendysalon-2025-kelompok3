@@ -167,7 +167,7 @@
                         const id = btn.getAttribute('data-id');
                         document.getElementById('edit-name').value = btn.getAttribute('data-name') || '';
                         document.getElementById('edit-hair_type').value = btn.getAttribute('data-hair_type') || 'Sehat';
-                        document.getElementById('form-edit').setAttribute('action', `/admin/vitamins/${id}`);
+                        document.getElementById('form-edit').setAttribute('action', `{{ url('/admin/vitamins') }}/${id}`);
                         modalEdit.classList.remove('hidden');
                     });
                 });
@@ -177,7 +177,7 @@
                         const id = btn.getAttribute('data-id');
                         const name = btn.getAttribute('data-name');
                         document.getElementById('delete-name').textContent = name || '';
-                        document.getElementById('form-delete').setAttribute('action', `/admin/vitamins/${id}`);
+                        document.getElementById('form-delete').setAttribute('action', `{{ url('/admin/vitamins') }}/${id}`);
                         modalDelete.classList.remove('hidden');
                     });
                 });
