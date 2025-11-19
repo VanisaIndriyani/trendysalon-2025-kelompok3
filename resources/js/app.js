@@ -347,7 +347,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const analyze = async () => {
         try {
-            const resp = await fetch('/scan/analyze', {
+            const analyzeUrl = (window.__SCAN_ROUTES__ && window.__SCAN_ROUTES__.analyze) ? window.__SCAN_ROUTES__.analyze : '../analyze';
+            const resp = await fetch(analyzeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -388,4 +389,22 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     analyze();
+    
+    // Fallback loader that hits rule-based recommendation API when analyze isn't used
+    const loadRecs = async () => {
+        try {
+            const apiUrl = (window.__SCAN_ROUTES__ && window.__SCAN_ROUTES__.apiModels) ? window.__SCAN_ROUTES__.apiModels : '../api/recommendations/hair-models';
+            const resp = await fetch(`${apiUrl}?face_shape=${encodeURIComponent(faceShape || 'oval')}`);
+            const data = await resp.json();
+            if (Array.isArray(data) && data.length) {
+                // Map data to expected render format
+                render(data.map(m => ({ name: m.name, image_url: m.image || m.illustration_url })));
+            }
+        } catch (e) {
+            // Silent fallback
+        }
+    };
+    
+    // Optionally call fallback loader
+    loadRecs();
 });

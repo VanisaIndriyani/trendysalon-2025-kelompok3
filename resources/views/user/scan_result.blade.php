@@ -18,6 +18,13 @@
                 }
             };
         </script>
+        <!-- Inject absolute routes for JS to avoid base-path issues in production -->
+        <script>
+            window.__SCAN_ROUTES__ = {
+                apiModels: "{{ url('/api/recommendations/hair-models') }}",
+                analyze: "{{ url('/scan/analyze') }}"
+            };
+        </script>
         <script src="{{ asset('js/app.js') }}" defer></script>
         <!-- MediaPipe FaceMesh (CDN) for automatic landmark detection -->
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>

@@ -292,7 +292,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // faceShape sudah dideklarasikan di atas, gunakan nilai default 'oval' jika null
     const loadRecs = async () => {
         try {
-            const res = await fetch(`/api/recommendations/hair-models?face_shape=${encodeURIComponent(faceShape)}`);
+            const apiUrl = (window.__SCAN_ROUTES__ && window.__SCAN_ROUTES__.apiModels) ? window.__SCAN_ROUTES__.apiModels : '../api/recommendations/hair-models';
+            const res = await fetch(`${apiUrl}?face_shape=${encodeURIComponent(faceShape)}`);
             const data = await res.json();
             loading?.classList.add('hidden');
             if (!Array.isArray(data) || data.length === 0) {
