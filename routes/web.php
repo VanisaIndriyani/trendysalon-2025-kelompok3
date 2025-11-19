@@ -331,6 +331,15 @@ Route::get('/api/recommendations/hair-models', function (Request $request) {
         ->where('face_shapes', 'like', "%$shape%")
         ->orderBy('name')
         ->get(['id','name','image','types','length','face_shapes']);
+
+    // Fallback: jika tidak ada satupun model yang cocok (mis. kolom face_shapes kosong di hosting),
+    // tampilkan beberapa model teratas agar pengguna tetap melihat rekomendasi.
+    if ($models->isEmpty()) {
+        $models = HairModel::query()
+            ->orderBy('name')
+            ->take(4)
+            ->get(['id','name','image','types','length','face_shapes']);
+    }
     return response()->json(['data' => $models]);
 })->name('api.recommendations.hair_models');
 
