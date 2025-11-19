@@ -104,34 +104,81 @@
                 </p>
             </section>
 
-            <!-- Branches -->
+            <!-- Branches with dropdown to show website/map -->
             <section class="mt-6 space-y-4">
-                <div class="flex items-start gap-3 rounded-xl bg-white p-4 shadow">
-                    <div class="grid h-6 w-6 place-items-center rounded-full bg-amber-200">›</div>
-                    <div>
-                        <p class="font-semibold">Cabang Giwangan</p>
-                        <p class="text-sm text-stone-600">Jl. Pramuka No39A, Prenggan, Kec. Kotagede, Kota Yogyakarta, DIY</p>
+                <!-- Giwangan -->
+                <div class="rounded-xl bg-white shadow">
+                    <button type="button" class="branch-toggle flex w-full items-start gap-3 px-4 py-4" data-target="#branch-giwangan">
+                        <span class="grid h-6 w-6 place-items-center rounded-full bg-amber-200 text-stone-800 transition-transform">›</span>
+                        <div class="text-left">
+                            <p class="font-semibold">Cabang Giwangan</p>
+                            <p class="text-sm text-stone-600">Jl. Pramuka No39A, Prenggan, Kec. Kotagede, Kota Yogyakarta, DIY</p>
+                        </div>
+                    </button>
+                    <div id="branch-giwangan" class="hidden border-t border-stone-200">
+                        <div class="px-4 py-3 text-xs text-stone-600">Website/Maps</div>
+                        <div class="px-4 pb-4">
+                            <div class="aspect-video w-full overflow-hidden rounded-lg border">
+                                <iframe class="h-full w-full" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3952.676347770811!2d110.390335!3d-7.824039600000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7a573c8729ad31%3A0xcb31d1555a656237!2zVHJlbmR5IFNhbG9uIOqni-qmoOqmv-qmvOqmpOqngOqmneqngOqmquqngOqmseqmreqmuuqmtOqmpOqngA!5e0!3m2!1sid!2sid!4v1763528154812!5m2!1sid!2sid"></iframe>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="flex items-start gap-3 rounded-xl bg-white p-4 shadow">
-                    <div class="grid h-6 w-6 place-items-center rounded-full bg-amber-200">›</div>
-                    <div>
-                        <p class="font-semibold">Cabang Sapen</p>
-                        <p class="text-sm text-stone-600">Jl. bimaskati No45 A, Demangan, Kec. Gondokusuman, Kota Yogyakarta, DIY</p>
+
+                <!-- Sapen -->
+                <div class="rounded-xl bg-white shadow">
+                    <button type="button" class="branch-toggle flex w-full items-start gap-3 px-4 py-4" data-target="#branch-sapen">
+                        <span class="grid h-6 w-6 place-items-center rounded-full bg-amber-200 text-stone-800 transition-transform">›</span>
+                        <div class="text-left">
+                            <p class="font-semibold">Cabang Sapen</p>
+                            <p class="text-sm text-stone-600">Jl. bimaskati No45 A, Demangan, Kec. Gondokusuman, Kota Yogyakarta, DIY</p>
+                        </div>
+                    </button>
+                    <div id="branch-sapen" class="hidden border-t border-stone-200">
+                        <div class="px-4 py-3 text-xs text-stone-600">Website/Maps</div>
+                        <div class="px-4 pb-4">
+                            <div class="aspect-video w-full overflow-hidden rounded-lg border">
+                                <iframe class="h-full w-full" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3953.0147614538614!2d110.391307!3d-7.788259000000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7a59da72a704e5%3A0x5b7cb4bc6028e8ab!2zQmUmWW91IFNhbG9uLyBUcmVuZHkgU2Fsb24o6qeL6qan6qa6JuqmquqmuuqmtOqmiOqmseqmreqmuuqmtOqmpOqngC_qpqDqpr_qprzqpqTqp4Dqpp3qp4Dqpqrqp4DqprHqpq3qprrqprTqpqTqp4Ap!5e0!3m2!1sid!2sid!4v1763528188007!5m2!1sid!2sid"></iframe>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="flex items-start gap-3 rounded-xl bg-white p-4 shadow">
-                    <div class="grid h-6 w-6 place-items-center rounded-full bg-amber-200">›</div>
-                    <div>
-                        <p class="font-semibold">Cabang Kotabaru</p>
-                        <p class="text-sm text-stone-600">Jl. Kiasakti Timur No14, Kotabaru, Kec. Danurejan, Kota Yogyakarta, DIY</p>
+
+                <!-- Kotabaru -->
+                <div class="rounded-xl bg-white shadow">
+                    <button type="button" class="branch-toggle flex w-full items-start gap-3 px-4 py-4" data-target="#branch-kotabaru">
+                        <span class="grid h-6 w-6 place-items-center rounded-full bg-amber-200 text-stone-800 transition-transform">›</span>
+                        <div class="text-left">
+                            <p class="font-semibold">Cabang Kotabaru</p>
+                            <p class="text-sm text-stone-600">Jl. Kiasakti Timur No14, Kotabaru, Kec. Danurejan, Kota Yogyakarta, DIY</p>
+                        </div>
+                    </button>
+                    <div id="branch-kotabaru" class="hidden border-t border-stone-200">
+                        <div class="px-4 py-3 text-xs text-stone-600">Website/Maps</div>
+                        <div class="px-4 pb-4">
+                            <div class="aspect-video w-full overflow-hidden rounded-lg border">
+                                <iframe class="h-full w-full" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3953.0096117877865!2d110.3760499!3d-7.7888047!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7a582cf3caa41d%3A0xe997d35e6c4041d5!2sTrendy%20Salon!5e0!3m2!1sid!2sid!4v1763528212373!5m2!1sid!2sid"></iframe>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="flex items-start gap-3 rounded-xl bg-white p-4 shadow">
-                    <div class="grid h-6 w-6 place-items-center rounded-full bg-amber-200">›</div>
-                    <div>
-                        <p class="font-semibold">Cabang Seturan</p>
-                        <p class="text-sm text-stone-600">Jl. Sekolan Mataram No430, Pringwulung, Condongcatur, Kec. Depok, Kabupaten Sleman, DIY</p>
+
+                <!-- Seturan -->
+                <div class="rounded-xl bg-white shadow">
+                    <button type="button" class="branch-toggle flex w-full items-start gap-3 px-4 py-4" data-target="#branch-seturan">
+                        <span class="grid h-6 w-6 place-items-center rounded-full bg-amber-200 text-stone-800 transition-transform">›</span>
+                        <div class="text-left">
+                            <p class="font-semibold">Cabang Seturan</p>
+                            <p class="text-sm text-stone-600">Jl. Sekolan Mataram No430, Pringwulung, Condongcatur, Kec. Depok, Kabupaten Sleman, DIY</p>
+                        </div>
+                    </button>
+                    <div id="branch-seturan" class="hidden border-t border-stone-200">
+                        <div class="px-4 py-3 text-xs text-stone-600">Website/Maps</div>
+                        <div class="px-4 pb-4">
+                            <div class="aspect-video w-full overflow-hidden rounded-lg border">
+                                <iframe class="h-full w-full" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3953.204400391403!2d110.39664289999999!3d-7.7681368!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7a591b65a0040f%3A0x97bccaa03a2012a6!2sTrendy%20Salon%204!5e0!3m2!1sid!2sid!4v1763528256200!5m2!1sid!2sid"></iframe>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -145,5 +192,21 @@
         <style>
             #heroSlider .slide { position: relative; }
         </style>
+        <script>
+            // Simple dropdown toggles for branches
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('.branch-toggle').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const targetSel = btn.getAttribute('data-target');
+                        const panel = targetSel ? document.querySelector(targetSel) : null;
+                        if (!panel) return;
+                        panel.classList.toggle('hidden');
+                        // rotate chevron
+                        const chevron = btn.querySelector('span');
+                        if (chevron) chevron.style.transform = panel.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
+                    });
+                });
+            });
+        </script>
     </body>
 </html>
