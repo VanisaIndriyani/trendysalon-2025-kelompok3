@@ -94,9 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.setItem('prefCondition', condition?.value || '');
         } catch {}
 
-        const target = submit.getAttribute('data-target') || 'scan/camera';
-        const nextUrl = new URL(target, window.location.href).toString();
-        window.location.href = nextUrl;
+        const target = submit.getAttribute('data-target') || (window.__SCAN_ROUTES__?.camera || './camera');
+        window.location.href = target;
     });
 });
 
@@ -159,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             sessionStorage.setItem('scanImage', dataUrl);
             sessionStorage.setItem('faceShape', faceShape);
         } catch {}
-        const resultsUrl = new URL('scan/results', window.location.href).toString();
+        const resultsUrl = window.__SCAN_ROUTES__?.results || './results';
         window.location.href = resultsUrl;
     });
 });

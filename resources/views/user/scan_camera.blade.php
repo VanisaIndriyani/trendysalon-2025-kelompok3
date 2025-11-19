@@ -18,6 +18,13 @@
                 }
             };
         </script>
+        <script>
+            // Expose absolute URLs for scan routes so JS can navigate correctly under subdirectories
+            window.__SCAN_ROUTES__ = {
+                camera: "{{ url('/scan/camera') }}",
+                results: "{{ url('/scan/results') }}",
+            };
+        </script>
         <script src="{{ asset('js/app.js') }}" defer></script>
     </head>
     <body class="bg-stone-200 font-sans text-stone-800" id="scanCameraPage">
