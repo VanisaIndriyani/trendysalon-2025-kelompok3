@@ -25,7 +25,7 @@
                 results: "{{ url('/scan/results') }}",
             };
         </script>
-        <script src="{{ asset('js/app.js') }}" defer></script>
+        <script src="{{ asset('build/assets/app-CHUWRvb-.js') }}" defer></script>
     </head>
     <body class="bg-stone-200 font-sans text-stone-800" id="scanCameraPage">
         <!-- Header -->
@@ -40,8 +40,11 @@
 
         <main class="mx-auto max-w-screen-md px-3 sm:px-4">
             <section class="mt-3 sm:mt-4 animate-fade-in-up">
-                <div class="rounded-xl bg-gradient-to-r from-pink-100 via-pink-50 to-amber-100 px-3 sm:px-4 py-3 sm:py-4 text-center shadow-md animate-pulse-slow">
-                    <p class="text-[10px] sm:text-xs text-stone-700 leading-relaxed font-medium">Posisikan wajah dan rambut Anda di tengah frame<br/>untuk hasil terbaik</p>
+                <div id="faceInstruction" class="rounded-xl bg-gradient-to-r from-green-100 via-green-50 to-emerald-100 px-3 sm:px-4 py-3 sm:py-4 text-center shadow-md transition-all duration-300">
+                    <p class="text-[11px] sm:text-xs text-stone-700 leading-relaxed font-medium">
+                        <span class="font-semibold text-green-700">Posisikan wajah Anda di tengah oval!</span><br/>
+                        <span class="text-[10px] sm:text-xs">Tetap diam untuk hasil foto yang jelas</span>
+                    </p>
                 </div>
 
                 <div class="mt-3 sm:mt-4 rounded-xl bg-stone-300 p-2 sm:p-4 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -49,7 +52,36 @@
                         <!-- Animated border effect -->
                         <div class="absolute inset-0 rounded-xl border-2 border-pink-400 opacity-0 animate-border-glow"></div>
                         
-                        <video id="cameraVideo" autoplay playsinline class="h-full w-full object-cover rounded-lg hidden transition-opacity duration-500"></video>
+                        <video id="cameraVideo" autoplay playsinline class="h-full w-full object-cover rounded-lg hidden transition-opacity duration-500" style="transform: scaleX(1);"></video>
+                        
+                        <!-- Face Alignment Guide Overlay - Bentuk Wajah Oval (Seperti Contoh) -->
+                        <div id="faceGuideOverlay" class="absolute inset-0 pointer-events-none z-10 hidden">
+                            <!-- Oval face shape guide (bentuk wajah) - Sederhana seperti contoh -->
+                            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[75%] h-[90%] border-2 border-green-500 rounded-[50%] shadow-lg shadow-green-500/30"></div>
+                            
+                            <!-- Garis merah untuk peletakkan bentuk wajah -->
+                            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[75%] h-[90%] border-2 border-red-500/60 rounded-[50%] pointer-events-none"></div>
+                            
+                            <!-- Garis tengah horizontal merah (untuk mata) -->
+                            <div class="absolute top-[38%] left-[12.5%] right-[12.5%] h-0.5 bg-red-500/50 transform -translate-y-1/2"></div>
+                            
+                            <!-- Garis tengah vertikal merah (untuk hidung) -->
+                            <div class="absolute left-1/2 top-[5%] bottom-[5%] w-0.5 bg-red-500/50 transform -translate-x-1/2"></div>
+                            
+                            <!-- Titik tengah merah (untuk hidung) -->
+                            <div class="absolute top-[45%] left-1/2 w-2 h-2 bg-red-500 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                        </div>
+                        
+                        <!-- Warning Multiple Faces -->
+                        <div id="multipleFacesWarning" class="absolute top-2 left-2 right-2 bg-red-500 text-white px-3 py-2 rounded-lg shadow-lg z-20 hidden">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                <p class="text-xs sm:text-sm font-medium">⚠️ Hanya 1 orang yang diperbolehkan! Foto tidak bisa 2 orang atau lebih.</p>
+                            </div>
+                        </div>
+                        
                         <div id="cameraPlaceholder" class="grid place-items-center animate-fade-in">
                             <div class="relative">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-10 w-10 sm:h-14 sm:w-14 text-stone-700 animate-pulse-slow"><path d="M4 7h3l2-2h6l2 2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" stroke-width="1.5"/><circle cx="12" cy="13" r="3.5" stroke-width="1.5"/></svg>
@@ -83,7 +115,7 @@
                 
                 <!-- Helper text -->
                 <p class="mt-4 text-center text-[10px] sm:text-xs text-stone-600 animate-fade-in">
-                    Tekan tombol untuk mengambil foto
+                    Pastikan wajah berada di dalam oval hijau, lalu tekan tombol untuk mengambil foto
                 </p>
             </section>
         </main>

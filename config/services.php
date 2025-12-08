@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'huggingface' => [
+        'api_key' => env('HUGGINGFACE_API_KEY'),
+    ],
+
+    'replicate' => [
+        'api_key' => env('REPLICATE_API_KEY'),
+        'face_detection_model' => env('REPLICATE_FACE_DETECTION_MODEL', 'lucataco/face-detection'),
+    ],
+
 ];

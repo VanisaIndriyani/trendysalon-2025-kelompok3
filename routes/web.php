@@ -264,7 +264,51 @@ Route::post('/super/admins/{user}/delete', function (User $user) {
 Route::get('/admin/reports', function () {
     if (!session('admin_logged_in')) return redirect()->route('admin.login');
     $recs = App\Models\Recommendation::query()->orderByDesc('created_at')->get();
-    return view('admin.reports', compact('recs'));
+    
+    // Hitung statistik vitamin berdasarkan hair_condition
+    $vitaminStats = [];
+    $vitamins = App\Models\HairVitamin::all();
+    
+    foreach ($vitamins as $vitamin) {
+        // Hitung berapa kali vitamin ini direkomendasikan
+        // berdasarkan match hair_condition dengan hair_type (case-insensitive + trim)
+        $hairType = trim($vitamin->hair_type);
+        $count = App\Models\Recommendation::whereRaw('LOWER(TRIM(hair_condition)) = ?', [strtolower($hairType)])
+            ->count();
+        
+        $vitaminStats[] = [
+            'name' => $vitamin->name,
+            'count' => $count,
+            'hair_type' => $vitamin->hair_type,
+        ];
+    }
+    
+    // Urutkan dari yang paling banyak direkomendasikan
+    usort($vitaminStats, function($a, $b) {
+        return $b['count'] - $a['count'];
+    });
+    
+    // Ambil TOP 5 vitamin terpopuler
+    $topVitamins = array_slice($vitaminStats, 0, 5);
+    
+    // Hitung model rambut terpopuler
+    $modelCounts = [];
+    foreach ($recs as $rec) {
+        if ($rec->recommended_models) {
+            $models = explode(',', $rec->recommended_models);
+            foreach ($models as $model) {
+                $model = trim($model);
+                if (!empty($model)) {
+                    $modelCounts[$model] = ($modelCounts[$model] ?? 0) + 1;
+                }
+            }
+        }
+    }
+    arsort($modelCounts);
+    $topModel = !empty($modelCounts) ? array_key_first($modelCounts) : 'Oval Layer With Curtain Bangs';
+    $topVitamin = !empty($topVitamins) ? $topVitamins[0]['name'] : 'Vitamin A';
+    
+    return view('admin.reports', compact('recs', 'topVitamins', 'topModel', 'topVitamin', 'vitaminStats'));
 })->name('admin.reports');
 // Export Admin Reports
 Route::get('/admin/reports/export/excel', [ReportsExportController::class, 'excel'])->name('admin.reports.export.excel');

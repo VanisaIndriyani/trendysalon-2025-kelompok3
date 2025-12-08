@@ -26,7 +26,7 @@
                 <div class="flex items-start gap-3">
                     <div class="h-10 w-10 rounded-full grid place-items-center bg-pink-50 ring-1 ring-pink-200 text-pink-600">✂️</div>
                     <div>
-                        <p class="font-semibold">Oval Layer With Curtain Bangs</p>
+                        <p class="font-semibold">{{ $topModel ?? 'Oval Layer With Curtain Bangs' }}</p>
                         <p class="text-xs text-stone-600">Rekomendasi Model Terpopuler</p>
                     </div>
                 </div>
@@ -35,7 +35,7 @@
                 <div class="flex items-start gap-3">
                     <div class="h-10 w-10 rounded-full grid place-items-center bg-pink-50 ring-1 ring-pink-200 text-pink-600">💊</div>
                     <div>
-                        <p class="font-semibold">Vitamin A</p>
+                        <p class="font-semibold">{{ $topVitamin ?? 'Vitamin A' }}</p>
                         <p class="text-xs text-stone-600">Vitamin Terpopuler</p>
                     </div>
                 </div>
@@ -44,7 +44,7 @@
                 <div class="flex items-start gap-3">
                     <div class="h-10 w-10 rounded-full grid place-items-center bg-pink-50 ring-1 ring-pink-200 text-pink-600">📦</div>
                     <div>
-                        <p class="font-extrabold text-xl">2.512</p>
+                        <p class="font-extrabold text-xl">{{ number_format($recs->count()) }}</p>
                         <p class="text-xs text-stone-600">Total Rekomendasi</p>
                     </div>
                 </div>
@@ -72,18 +72,21 @@
             <p class="text-sm font-semibold text-stone-700 tracking-wide">Vitamin Paling Direkomendasikan</p>
             <div class="mt-4 grid grid-cols-2 gap-6">
                 <div class="space-y-2">
-                    <div class="flex items-center gap-3"><span class="h-6 w-6 grid place-items-center rounded-md bg-pink-100 text-pink-700 text-xs">1</span><span>Vitamin A</span></div>
-                    <div class="flex items-center gap-3"><span class="h-6 w-6 grid place-items-center rounded-md bg-pink-100 text-pink-700 text-xs">2</span><span>Vitamin B</span></div>
-                    <div class="flex items-center gap-3"><span class="h-6 w-6 grid place-items-center rounded-md bg-pink-100 text-pink-700 text-xs">3</span><span>Vitamin C</span></div>
-                    <div class="flex items-center gap-3"><span class="h-6 w-6 grid place-items-center rounded-md bg-pink-100 text-pink-700 text-xs">4</span><span>Vitamin D</span></div>
-                    <div class="flex items-center gap-3"><span class="h-6 w-6 grid place-items-center rounded-md bg-pink-100 text-pink-700 text-xs">5</span><span>Vitamin E</span></div>
+                    @forelse(($topVitamins ?? []) as $index => $vitamin)
+                        <div class="flex items-center gap-3">
+                            <span class="h-6 w-6 grid place-items-center rounded-md bg-pink-100 text-pink-700 text-xs">{{ $index + 1 }}</span>
+                            <span>{{ $vitamin['name'] }}</span>
+                        </div>
+                    @empty
+                        <div class="text-sm text-stone-500">Belum ada data vitamin</div>
+                    @endforelse
                 </div>
                 <div class="space-y-2 text-stone-600">
-                    <p>50 pemakaian</p>
-                    <p>30 pemakaian</p>
-                    <p>20 pemakaian</p>
-                    <p>19 pemakaian</p>
-                    <p>15 pemakaian</p>
+                    @forelse(($topVitamins ?? []) as $vitamin)
+                        <p>{{ number_format($vitamin['count']) }} pemakaian</p>
+                    @empty
+                        <div class="text-sm text-stone-500">-</div>
+                    @endforelse
                 </div>
             </div>
         </div>
@@ -130,6 +133,18 @@
                         @forelse(($recs ?? []) as $rec)
                             @php
                                 $tanggal = optional($rec->created_at)->format('d/m/Y');
+                                // Cari vitamin yang cocok berdasarkan hair_condition (case-insensitive + trim)
+                                $recommendedVitamin = '-';
+                                if ($rec->hair_condition) {
+                                    $hairCondition = trim($rec->hair_condition);
+                                    // Coba exact match dulu
+                                    $vitamin = App\Models\HairVitamin::whereRaw('LOWER(TRIM(hair_type)) = ?', [strtolower($hairCondition)])->first();
+                                    // Jika tidak ketemu, coba match tanpa case-sensitive
+                                    if (!$vitamin) {
+                                        $vitamin = App\Models\HairVitamin::where('hair_type', 'like', '%' . $hairCondition . '%')->first();
+                                    }
+                                    $recommendedVitamin = $vitamin ? $vitamin->name : '-';
+                                }
                                 $detail = [
                                     'tanggal' => $tanggal,
                                     'nama' => $rec->name,
@@ -139,6 +154,7 @@
                                     'jenis' => $rec->hair_type,
                                     'tipe' => $rec->hair_condition,
                                     'model' => $rec->recommended_models,
+                                    'vitamin' => $recommendedVitamin,
                                 ];
                             @endphp
                             <tr class="hover:bg-pink-50" data-date="{{ $tanggal }}" data-detail='@json($detail)'>

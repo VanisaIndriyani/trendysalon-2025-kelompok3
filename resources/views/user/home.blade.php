@@ -18,7 +18,7 @@
                 }
             };
         </script>
-        <script src="{{ asset('js/app.js') }}" defer></script>
+        <script src="{{ asset('build/assets/app-CHUWRvb-.js') }}" defer></script>
     </head>
     <body class="bg-stone-200 font-sans text-stone-800">
         <!-- Header -->
