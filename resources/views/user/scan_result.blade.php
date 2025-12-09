@@ -26,9 +26,7 @@
             };
             window.__ASSET_BASE__ = "{{ url('/') }}";
         </script>
-        <script src="{{ asset('js/app.js') }}" defer></script>
-        <!-- MediaPipe FaceMesh (CDN) for automatic landmark detection -->
-        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+        <script src="{{ asset('build/assets/app-B8ho6jJ0.js') }}" defer></script>
     </head>
     <body class="bg-stone-200 font-sans text-stone-800" id="scanResultPage">
         <!-- Header -->
@@ -53,32 +51,6 @@
                     <div class="relative inline-block">
                         <img id="captureImage" alt="Hasil capture" class="mx-auto h-32 w-32 sm:h-44 sm:w-44 rounded-xl object-cover shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl" />
                         <div class="absolute inset-0 rounded-xl border-2 border-pink-400/50 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                    </div>
-                </div>
-
-                <!-- Try-on overlay area -->
-                <div id="tryOnControls" class="mt-3 sm:mt-4 hidden animate-fade-in-up">
-                    <div class="flex items-center justify-between px-1 mb-2">
-                        <p class="text-[10px] sm:text-xs text-stone-700 font-medium">Coba model di wajah Anda</p>
-                        <button id="tryOnClose" type="button" class="rounded-lg border border-stone-300 bg-white px-2.5 sm:px-2 py-1.5 sm:py-1 text-[10px] sm:text-xs touch-manipulation transition-all duration-300 hover:bg-pink-100 hover:border-pink-300 hover:scale-105 active:scale-95">Tutup</button>
-                    </div>
-                    <div id="tryOnStage" class="relative mx-auto mt-2 h-56 w-56 sm:h-72 sm:w-72 rounded-xl bg-stone-100 overflow-hidden shadow-xl border-2 border-pink-200 transition-all duration-300 hover:shadow-2xl hover:border-pink-300">
-                        <img id="tryOnBase" class="absolute inset-0 h-full w-full object-cover" />
-                        <img id="tryOnOverlay" class="absolute left-1/2 top-0 h-full object-contain pointer-events-none transition-all duration-300" />
-                    </div>
-                    <div class="mt-3 grid grid-cols-3 gap-2 sm:gap-3 px-1">
-                        <label class="text-[10px] sm:text-xs flex flex-col gap-1.5 group">
-                            <span class="font-medium text-stone-700">Skala</span>
-                            <input id="tryOnScale" type="range" min="80" max="140" value="100" class="w-full touch-manipulation accent-pink-500 hover:accent-pink-600 transition-all duration-300">
-                        </label>
-                        <label class="text-[10px] sm:text-xs flex flex-col gap-1.5 group">
-                            <span class="font-medium text-stone-700">Posisi X</span>
-                            <input id="tryOnOffsetX" type="range" min="-60" max="60" value="0" class="w-full touch-manipulation accent-pink-500 hover:accent-pink-600 transition-all duration-300">
-                        </label>
-                        <label class="text-[10px] sm:text-xs flex flex-col gap-1.5 group">
-                            <span class="font-medium text-stone-700">Posisi Y</span>
-                            <input id="tryOnOffsetY" type="range" min="-40" max="40" value="0" class="w-full touch-manipulation accent-pink-500 hover:accent-pink-600 transition-all duration-300">
-                        </label>
                     </div>
                 </div>
 
@@ -278,21 +250,6 @@
                     observer.observe(recommendationsContainer, { childList: true });
                 }
                 
-                // Enhanced try-on controls animation
-                const tryOnControls = document.getElementById('tryOnControls');
-                const tryOnClose = document.getElementById('tryOnClose');
-                
-                if (tryOnClose) {
-                    tryOnClose.addEventListener('click', () => {
-                        if (tryOnControls) {
-                            tryOnControls.style.opacity = '0';
-                            tryOnControls.style.transform = 'translateY(-10px)';
-                            setTimeout(() => {
-                                tryOnControls.classList.add('hidden');
-                            }, 300);
-                        }
-                    });
-                }
             });
         </script>
     </body>

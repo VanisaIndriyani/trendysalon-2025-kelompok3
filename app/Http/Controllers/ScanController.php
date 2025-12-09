@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\HairModel;
 use App\Models\Recommendation;
+use App\Services\HuggingFaceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -299,11 +300,7 @@ class ScanController extends Controller
             }
         }
 
-        // --- Recommendation logic (content-based fallback) ---
-        $face = strtolower((string)($faceShape ?: 'oval'));
-        $prefLength = strtolower((string)($pref['length'] ?? ''));
-        $prefType = strtolower((string)($pref['type'] ?? ''));
-
+        // --- AI-Powered Recommendation using Hugging Face ---
         $models = HairModel::all();
         if ($models->isEmpty()) {
             // fallback static models if DB has none
@@ -319,38 +316,191 @@ class ScanController extends Controller
             $models = $fallback->map(function ($r) { return (object) $r; });
         }
 
-        $shapeKeywords = [
-            'oval' => ['layer', 'curtain', 'butterfly', 'wolf', 'face framing', 'wavy', 'bob'],
-            'bulat' => ['layer', 'curtain', 'butterfly', 'wavy', 'long'],
-            'kotak' => ['layer', 'bob', 'soft', 'face framing', 'wavy'],
-            'lonjong' => ['bob', 'pixie', 'medium', 'face framing'],
-        ];
+        // Try to use AI for enhanced recommendations (Replicate + Hugging Face)
+        $huggingFaceService = new HuggingFaceService();
+        $replicateService = new \App\Services\ReplicateService();
+        $items = [];
+        // Set ai_enabled to true if any API key exists (even if API fails, we tried to use AI)
+        $aiEnabled = !empty(config('services.huggingface.api_key')) || !empty(config('services.replicate.api_key'));
 
-        $items = $models->map(function ($m) use ($face, $shapeKeywords, $prefLength, $prefType) {
-            $score = 0;
-            $nameLower = strtolower($m->name ?? '');
-            $lengthLower = strtolower((string)($m->length ?? ''));
-            $typesLower = strtolower((string)($m->types ?? ''));
-
-            $keywords = $shapeKeywords[$face] ?? $shapeKeywords['oval'];
-            foreach ($keywords as $kw) {
-                if (strpos($nameLower, $kw) !== false) { $score += 2; break; }
+        try {
+            // Comprehensive AI Analysis: Face Shape + Hair Characteristics
+            $detectedFaceShape = null;
+            $detectionConfidence = 0;
+            $detectedHairType = null;
+            $detectedHairLength = null;
+            
+            if ($storedUrl || $dataUrl) {
+                // Prefer stored file path over URL for better reliability
+                $imageForAI = null;
+                
+                // If we have storedUrl, try to extract file path
+                if ($storedUrl) {
+                    // Extract path from URL: http://127.0.0.1:8000/storage/scans/file.jpg -> scans/file.jpg
+                    if (preg_match('#/storage/(.+)$#', $storedUrl, $matches)) {
+                        $filePath = $matches[1];
+                        if (Storage::disk('public')->exists($filePath)) {
+                            $imageForAI = $filePath; // Use file path directly
+                            Log::info('✅ Using file path from stored URL', [
+                                'url' => substr($storedUrl, 0, 100),
+                                'path' => $filePath,
+                            ]);
+                        } else {
+                            $imageForAI = $storedUrl; // Fallback to URL
+                        }
+                    } else {
+                        $imageForAI = $storedUrl;
+                    }
+                } else {
+                    $imageForAI = $dataUrl; // Use data URL
+                }
+                
+                Log::info('🔍 Starting comprehensive AI analysis', [
+                    'has_stored_url' => !empty($storedUrl),
+                    'has_data_url' => !empty($dataUrl),
+                    'image_for_ai' => is_string($imageForAI) ? substr($imageForAI, 0, 100) : gettype($imageForAI),
+                    'user_preferences' => $pref,
+                    'has_replicate' => !empty(config('services.replicate.api_key')),
+                ]);
+                
+                // Try Replicate first (more reliable), then Hugging Face
+                $analysisResult = null;
+                
+                if (!empty(config('services.replicate.api_key'))) {
+                    Log::info('🔄 Trying Replicate first...');
+                    $analysisResult = $replicateService->comprehensiveAnalysis($imageForAI, $pref);
+                }
+                
+                // Fallback to Hugging Face if Replicate fails or not configured
+                if (!$analysisResult || empty($analysisResult['face_shape'])) {
+                    if (!empty(config('services.huggingface.api_key'))) {
+                        Log::info('🔄 Trying Hugging Face...');
+                        $hfResult = $huggingFaceService->comprehensiveAnalysis($imageForAI, $pref);
+                        if ($hfResult && !empty($hfResult['face_shape'])) {
+                            $analysisResult = $hfResult;
+                        }
+                    }
+                }
+                
+                // Use the result we got, or keep null for user input fallback
+                if (!$analysisResult) {
+                    $analysisResult = [
+                        'face_shape' => null,
+                        'face_shape_confidence' => 0,
+                        'hair_type' => $pref['type'] ?? null,
+                        'hair_length' => $pref['length'] ?? null,
+                        'analysis_method' => 'user_input',
+                    ];
+                }
+                
+                if ($analysisResult) {
+                    // Face shape detection
+                    if (!empty($analysisResult['face_shape'])) {
+                        $detectedFaceShape = $analysisResult['face_shape'];
+                        $detectionConfidence = $analysisResult['face_shape_confidence'] ?? 0;
+                        
+                        Log::info('✅ AI face shape detected', [
+                            'detected_shape' => $detectedFaceShape,
+                            'confidence' => $detectionConfidence,
+                            'user_input' => $faceShape,
+                        ]);
+                    }
+                    
+                    // Hair characteristics (from AI or user input)
+                    if (!empty($analysisResult['hair_type']) && $analysisResult['hair_type'] !== 'Unknown') {
+                        $detectedHairType = $analysisResult['hair_type'];
+                    }
+                    if (!empty($analysisResult['hair_length']) && $analysisResult['hair_length'] !== 'Unknown') {
+                        $detectedHairLength = $analysisResult['hair_length'];
+                    }
+                    
+                    Log::info('✅ Comprehensive analysis completed', [
+                        'face_shape' => $detectedFaceShape,
+                        'hair_type' => $detectedHairType ?? $pref['type'] ?? 'N/A',
+                        'hair_length' => $detectedHairLength ?? $pref['length'] ?? 'N/A',
+                        'method' => $analysisResult['analysis_method'] ?? 'user_input',
+                    ]);
+                } else {
+                    Log::info('⚠️ AI analysis failed or unavailable, using user input');
+                }
             }
 
-            if ($prefLength && $lengthLower === strtolower($prefLength)) { $score += 2; }
-            if ($prefType && strpos($typesLower, strtolower($prefType)) !== false) { $score += 1; }
-            if ($face === 'oval') { $score += 1; }
+            // Use detected face shape (if available and confident) or fallback to user input
+            // Only use AI detection if confidence > 0.5
+            if ($detectedFaceShape && $detectionConfidence > 0.5) {
+                $finalFaceShape = $detectedFaceShape;
+                Log::info('✅ Using AI-detected face shape', [
+                    'shape' => $finalFaceShape,
+                    'confidence' => $detectionConfidence,
+                ]);
+            } else {
+                $finalFaceShape = $faceShape ?: 'Oval';
+                Log::info('📝 Using user-provided face shape', [
+                    'shape' => $finalFaceShape,
+                ]);
+            }
+            
+            // Update preferences with detected values (if available)
+            if ($detectedHairType) {
+                $pref['type'] = $detectedHairType;
+            }
+            if ($detectedHairLength) {
+                $pref['length'] = $detectedHairLength;
+            }
 
-            return [
-                'name' => $m->name ?? '',
-                'image_url' => asset($m->image ?? 'img/model1.png'),
-                'score' => $score,
+            // Get AI-powered recommendations
+            $items = $huggingFaceService->getAIRecommendations($finalFaceShape, $pref, $models);
+
+            Log::info('AI recommendations generated', [
+                'ai_enabled' => $aiEnabled,
+                'face_shape' => $finalFaceShape,
+                'items_count' => count($items),
+                'api_key_set' => $aiEnabled,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error getting AI recommendations, using fallback', [
+                'error' => $e->getMessage(),
+            ]);
+            // Keep ai_enabled true if API key exists (we tried to use AI)
+            // Fallback to rule-based if AI fails
+            $face = strtolower((string)($faceShape ?: 'oval'));
+            $prefLength = strtolower((string)($pref['length'] ?? ''));
+            $prefType = strtolower((string)($pref['type'] ?? ''));
+
+            $shapeKeywords = [
+                'oval' => ['layer', 'curtain', 'butterfly', 'wolf', 'face framing', 'wavy', 'bob'],
+                'bulat' => ['layer', 'curtain', 'butterfly', 'wavy', 'long'],
+                'kotak' => ['layer', 'bob', 'soft', 'face framing', 'wavy'],
+                'lonjong' => ['bob', 'pixie', 'medium', 'face framing'],
             ];
-        })
-        ->sortByDesc('score')
-        ->take(3)
-        ->values()
-        ->toArray();
+
+            $items = $models->map(function ($m) use ($face, $shapeKeywords, $prefLength, $prefType) {
+                $score = 0;
+                $nameLower = strtolower($m->name ?? '');
+                $lengthLower = strtolower((string)($m->length ?? ''));
+                $typesLower = strtolower((string)($m->types ?? ''));
+
+                $keywords = $shapeKeywords[$face] ?? $shapeKeywords['oval'];
+                foreach ($keywords as $kw) {
+                    if (strpos($nameLower, $kw) !== false) { $score += 2; break; }
+                }
+
+                if ($prefLength && $lengthLower === strtolower($prefLength)) { $score += 2; }
+                if ($prefType && strpos($typesLower, strtolower($prefType)) !== false) { $score += 1; }
+                if ($face === 'oval') { $score += 1; }
+
+                return [
+                    'name' => $m->name ?? '',
+                    'image_url' => asset($m->image ?? 'img/model1.png'),
+                    'score' => $score,
+                    'ai_recommended' => false,
+                ];
+            })
+            ->sortByDesc('score')
+            ->take(3)
+            ->values()
+            ->toArray();
+        }
 
         // --- Persist recommendation safely ---
         $saved = false;
@@ -473,13 +623,47 @@ class ScanController extends Controller
             }
         }
 
-        // Final response
+        // Get detailed hair style recommendations
+        $detailedRecommendations = null;
+        if ($aiEnabled) {
+            try {
+                $detailedRecommendations = $huggingFaceService->getHairStyleRecommendations($finalFaceShape);
+            } catch (\Exception $e) {
+                Log::warning('Failed to get detailed recommendations', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Prepare AI analysis summary for frontend display
+        $aiAnalysisSummary = [];
+        if ($detectedFaceShape) {
+            $aiAnalysisSummary['face_shape'] = "Bentuk wajahmu: {$detectedFaceShape}";
+        }
+        if (isset($detectedHairType) && $detectedHairType) {
+            $aiAnalysisSummary['hair_type'] = "Jenis rambutmu: {$detectedHairType}";
+        } elseif (!empty($pref['type'])) {
+            $aiAnalysisSummary['hair_type'] = "Jenis rambutmu: {$pref['type']}";
+        }
+        if (isset($detectedHairLength) && $detectedHairLength) {
+            $aiAnalysisSummary['hair_length'] = "Panjang rambutmu: {$detectedHairLength}";
+        } elseif (!empty($pref['length'])) {
+            $aiAnalysisSummary['hair_length'] = "Panjang rambutmu: {$pref['length']}";
+        }
+
+        // Final response with comprehensive AI analysis
         $response = [
             'ok' => true,
             'stored_url' => $storedUrl,
-            'face_shape' => $faceShape ?: 'Oval',
-            'preferences' => $pref,
+            'face_shape' => $finalFaceShape, // Use final detected shape
+            'face_shape_detected' => $detectedFaceShape ?? null,
+            'detection_confidence' => $detectionConfidence ?? 0,
+            'face_shape_user_input' => $faceShape, // Original user input
+            'hair_type_detected' => $detectedHairType ?? null,
+            'hair_length_detected' => $detectedHairLength ?? null,
+            'preferences' => $pref, // Updated with detected values if available
             'recommendations' => $items,
+            'detailed_recommendations' => $detailedRecommendations,
+            'ai_enabled' => $aiEnabled,
+            'ai_analysis_summary' => $aiAnalysisSummary, // Summary untuk ditampilkan di UI
             'saved' => $saved,
             'saved_id' => $savedId,
             'save_error' => $saveError,
@@ -503,6 +687,10 @@ class ScanController extends Controller
             'stored_url' => $storedUrl,
             'saved' => $saved,
             'saved_id' => $savedId,
+            'ai_enabled' => $aiEnabled,
+            'ai_enabled_type' => gettype($aiEnabled),
+            'has_hf_key' => !empty(config('services.huggingface.api_key')),
+            'has_replicate_key' => !empty(config('services.replicate.api_key')),
             'recommendations_count' => count($items),
             'save_error' => $saveError,
         ]);

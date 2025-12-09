@@ -161,11 +161,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
             activeStream = stream;
             video.srcObject = stream;
+            
+            // NONAKTIFKAN MIRROR - tidak flip horizontal
+            video.style.setProperty('transform', 'scaleX(1)', 'important'); // Normal, tidak mirror
+            
             await video.play().catch(() => {
                 // Ignore autoplay block
             });
             video.classList.remove('hidden');
             placeholder?.classList.add('hidden');
+            
+            // Tampilkan face guide overlay
+            const faceGuide = document.getElementById('faceGuideOverlay');
+            if (faceGuide) {
+                faceGuide.classList.remove('hidden');
+                // Update instruksi setelah camera ready
+                const instruction = document.getElementById('faceInstruction');
+                if (instruction) {
+                    setTimeout(() => {
+                        instruction.querySelector('p').innerHTML = '<span class="font-semibold text-green-700">Bagus! Tetap diam untuk hasil foto yang jelas</span>';
+                    }, 2000);
+                }
+            }
+            
             errEl?.classList.add('hidden');
         } catch (err) {
             if (DEBUG) console.error('Camera error:', err);
@@ -184,7 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Capture: gunakan canvas.toBlob untuk mengurangi ukuran payload
-    captureBtn?.addEventListener('click', () => {
+    captureBtn?.addEventListener('click', async () => {
         if (video.readyState < 2) { // HAVE_CURRENT_DATA
             if (DEBUG) console.warn('Video not ready yet');
             return;
@@ -199,6 +217,48 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         ctx.drawImage(video, 0, 0, width, height);
+
+        // Deteksi multiple faces menggunakan Face Detection API
+        let faceCount = 0;
+        const multipleFacesWarning = document.getElementById('multipleFacesWarning');
+        
+        try {
+            // Coba gunakan Face Detection API jika tersedia (Chrome/Edge)
+            if (window.FaceDetector) {
+                const faceDetector = new FaceDetector({ fastMode: true, maxDetectedFaces: 5 });
+                const faces = await faceDetector.detect(canvas);
+                faceCount = faces.length;
+                if (DEBUG) console.log('Face Detection API result:', { faceCount, faces });
+            } else {
+                // Fallback: Validasi akan dilakukan di backend
+                // Untuk sekarang, kita asumsikan 1 wajah dan backend akan validasi
+                faceCount = 1;
+                if (DEBUG) console.warn('Face Detection API not available, will validate in backend');
+            }
+        } catch (err) {
+            if (DEBUG) console.warn('Face detection error:', err);
+            // Jika Face Detection API tidak tersedia atau error, lanjutkan dengan asumsi 1 wajah
+            faceCount = 1;
+        }
+
+        // Tampilkan warning jika terdeteksi lebih dari 1 wajah
+        if (faceCount > 1) {
+            if (multipleFacesWarning) {
+                multipleFacesWarning.classList.remove('hidden');
+                // Auto hide setelah 5 detik
+                setTimeout(() => {
+                    multipleFacesWarning.classList.add('hidden');
+                }, 5000);
+            }
+            // Jangan lanjutkan capture jika lebih dari 1 wajah
+            if (DEBUG) console.warn('Multiple faces detected, blocking capture');
+            return;
+        } else {
+            // Sembunyikan warning jika hanya 1 wajah
+            if (multipleFacesWarning) {
+                multipleFacesWarning.classList.add('hidden');
+            }
+        }
 
         // Deteksi bentuk wajah sederhana berdasarkan rasio bingkai
         const ratio = width / height;
@@ -312,8 +372,23 @@ const hideNotification = () => {
 
 // Results page image preview
 document.addEventListener('DOMContentLoaded', () => {
+    // ALWAYS LOG - pastikan script ter-load
+    console.log('🎬🎬🎬 DOMContentLoaded - Results page script LOADED!');
+    console.log('📍 Current page:', window.location.href);
+    
     const page = document.getElementById('scanResultPage');
-    if (!page) return;
+    console.log('🔍 Checking scanResultPage element:', {
+        'found': !!page,
+        'page_id': page?.id,
+        'page_tag': page?.tagName
+    });
+    
+    if (!page) {
+        console.error('❌❌❌ scanResultPage element NOT FOUND! Script will exit.');
+        return;
+    }
+    
+    console.log('✅✅✅ scanResultPage found, continuing...');
 
     const dataUrl = sessionStorage.getItem('scanImage');
     const faceShape = sessionStorage.getItem('faceShape');
@@ -371,118 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${assetBase}/${u.replace(/^\//,'')}`;
     };
 
-    // Try-on elements
-    const tryOn = document.getElementById('tryOnControls');
-    const tryOnBase = document.getElementById('tryOnBase');
-    const tryOnOverlay = document.getElementById('tryOnOverlay');
-    const tryOnScale = document.getElementById('tryOnScale');
-    const tryOnOffsetY = document.getElementById('tryOnOffsetY');
-    const tryOnOffsetX = document.getElementById('tryOnOffsetX');
-    const tryOnClose = document.getElementById('tryOnClose');
-    if (tryOnBase && dataUrl) {
-        tryOnBase.src = dataUrl;
-    }
-
-    // Default transform computed from FaceMesh (auto)
-    let autoScaleDefault = null; // number 0.8..1.4
-    let autoOffsetDefault = null; // px -40..40 (Y)
-    let autoOffsetXDefault = null; // px -60..60 (X)
-
-    const applyTransform = () => {
-        const scale = Number(tryOnScale?.value || 100) / 100;
-        const offsetY = Number(tryOnOffsetY?.value || 0);
-        const offsetX = Number(tryOnOffsetX?.value || 0);
-        if (tryOnOverlay) {
-            tryOnOverlay.style.transform = `translateX(calc(-50% + ${offsetX}px)) translateY(${offsetY}px) scale(${scale})`;
-        }
-    };
-
-    tryOnScale?.addEventListener('input', applyTransform);
-    tryOnOffsetY?.addEventListener('input', applyTransform);
-    tryOnOffsetX?.addEventListener('input', applyTransform);
-    tryOnClose?.addEventListener('click', () => tryOn?.classList.add('hidden'));
-
-    // Initialize FaceMesh on captured image to compute face bounding box
-    const initFaceMesh = async () => {
-        try {
-            // Verify library is available
-            const FaceMeshLib = window.FaceMesh;
-            if (!FaceMeshLib || !FaceMeshLib.FaceMesh || !dataUrl) return;
-
-            const stage = document.getElementById('tryOnStage');
-            
-            // Prepare image element
-            const img = new Image();
-            img.src = dataUrl;
-            await img.decode();
-
-            // Gunakan ukuran gambar asli untuk akurasi bounding box
-            const W = img.naturalWidth || img.width || stage?.clientWidth || 288;
-            const H = img.naturalHeight || img.height || stage?.clientHeight || 288;
-
-            // Setup FaceMesh
-            const faceMesh = new FaceMeshLib.FaceMesh({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
-            });
-            faceMesh.setOptions({
-                selfieMode: true,
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5,
-            });
-
-            // Tambahkan timeout untuk mencegah hang jika onResults tidak terpanggil
-            const TIMEOUT_MS = 10000; // 10 detik
-            const resultsPromise = new Promise((resolve, reject) => {
-                const timeoutId = setTimeout(() => {
-                    reject(new Error('FaceMesh timeout: onResults tidak terpanggil dalam ' + TIMEOUT_MS + 'ms'));
-                }, TIMEOUT_MS);
-                
-                faceMesh.onResults((results) => {
-                    clearTimeout(timeoutId);
-                    resolve(results);
-                });
-            });
-            
-            await faceMesh.send({ image: img });
-            const results = await resultsPromise;
-            const landmarks = results?.multiFaceLandmarks?.[0];
-            if (!landmarks || !Array.isArray(landmarks)) return;
-
-            // Compute bounding box from landmarks (normalized [0..1])
-            let minX = 1, minY = 1, maxX = 0, maxY = 0;
-            for (const p of landmarks) {
-                if (p.x < minX) minX = p.x;
-                if (p.y < minY) minY = p.y;
-                if (p.x > maxX) maxX = p.x;
-                if (p.y > maxY) maxY = p.y;
-            }
-            const faceW = (maxX - minX) * W;
-            const faceH = (maxY - minY) * H;
-            const faceCenterX = ((minX + maxX) / 2) * W;
-
-            // Heuristic: hair overlay width ~ 1.6x face width
-            const targetRatio = 1.6;
-            let autoScale = faceW ? (targetRatio * faceW) / W : 1.0; // to 0.8..1.4
-            autoScale = Math.max(0.8, Math.min(1.4, autoScale));
-
-            // Offset Y: align top of hair to near forehead (use minY)
-            let autoOffsetY = Math.round((minY * H) * -0.25); // up by 25% of forehead distance
-            autoOffsetY = Math.max(-40, Math.min(40, autoOffsetY));
-
-            // Offset X: align to face center, small proportion to avoid jump
-            let autoOffsetX = Math.round((faceCenterX - W / 2) * 0.5);
-            autoOffsetX = Math.max(-60, Math.min(60, autoOffsetX));
-
-            autoScaleDefault = autoScale;
-            autoOffsetDefault = autoOffsetY;
-            autoOffsetXDefault = autoOffsetX;
-        } catch (err) {
-            if (DEBUG) console.warn('FaceMesh init error:', err);
-        }
-    };
-    initFaceMesh();
 
     // Tampilkan badge bentuk wajah
     const shapeBadge = document.createElement('div');
@@ -490,20 +453,24 @@ document.addEventListener('DOMContentLoaded', () => {
     shapeBadge.innerHTML = `<span class="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-pink-400 flex-shrink-0"></span> Bentuk wajah terdeteksi: <strong>${faceShape || 'oval'}</strong>`;
     list.before(shapeBadge);
 
-    const render = (items) => {
+    const render = (items, aiEnabled = false) => {
         list.innerHTML = '';
         items.forEach((it, index) => {
             const card = document.createElement('div');
             card.className = 'rounded-xl bg-white shadow-md hover:shadow-xl px-2.5 sm:px-3 py-2.5 sm:py-3 touch-manipulation cursor-pointer active:scale-[0.98] transition-all duration-300 hover:scale-105 hover:-translate-y-1 group';
             card.style.opacity = '0';
             card.style.transform = 'scale(0.9)';
+            
+            // AI badge jika AI enabled dan item direkomendasikan AI
+            const aiBadge = (aiEnabled && it.ai_recommended) 
+                ? '<div class="absolute top-2 left-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[8px] sm:text-[10px] px-2 py-1 rounded-full font-semibold flex items-center gap-1 shadow-lg"><svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>AI</div>'
+                : '';
+            
             card.innerHTML = `
                 <div class="h-28 sm:h-36 rounded-lg bg-stone-200 overflow-hidden relative">
                     <img src="${it.image_url || '/img/model1.png'}" alt="${it.name || 'Model Rambut'}" class="h-28 sm:h-36 w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <div class="bg-pink-500/90 text-white text-[8px] sm:text-[10px] px-2 py-1 rounded-full font-semibold">Coba</div>
-                    </div>
+                    ${aiBadge}
                 </div>
                 <p class="mt-2 text-center text-xs sm:text-sm leading-tight px-1 font-medium group-hover:text-pink-600 transition-colors duration-300">${it.name || ''}</p>
             `;
@@ -516,46 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.style.transform = 'scale(1)';
             }, index * 100);
 
-            // Klik kartu -> coba overlay di wajah pengguna
-            card.addEventListener('click', () => {
-                if (tryOnOverlay) {
-                    // Detach handler sebelumnya untuk mencegah loop
-                    tryOnOverlay.onerror = null;
-                    tryOnOverlay.onload = null;
-                    
-                    // Coba cari overlay PNG transparan berdasarkan nama model
-                    const slug = (it.name || '')
-                        .toLowerCase()
-                        .replace(/[^a-z0-9]+/g, '-')
-                        .replace(/^-|-$/g, '');
-                    const overlayGuess = slug ? `/img/overlays/${slug}.png` : '';
-                    let errorHandled = false;
-
-                    // Fallback ke gambar biasa bila overlay tidak tersedia
-                    tryOnOverlay.onerror = () => {
-                        if (errorHandled) return; // Prevent loop
-                        errorHandled = true;
-                        tryOnOverlay.onerror = null; // Detach setelah digunakan
-                        tryOnOverlay.src = it.image_url || '/img/model1.png';
-                        applyTransform();
-                        tryOn?.classList.remove('hidden');
-                    };
-                    tryOnOverlay.onload = () => {
-                        tryOnOverlay.onload = null; // Detach setelah digunakan
-                        applyTransform();
-                        tryOn?.classList.remove('hidden');
-                    };
-                    tryOnOverlay.src = overlayGuess || (it.image_url || '/img/model1.png');
-                    // Reset kontrol default
-                    const scaleVal = autoScaleDefault ? String(Math.round(autoScaleDefault * 100)) : '100';
-                    const offsetYVal = autoOffsetDefault !== null ? String(autoOffsetDefault) : '0';
-                    const offsetXVal = autoOffsetXDefault !== null ? String(autoOffsetXDefault) : '0';
-                    if (tryOnScale) tryOnScale.value = scaleVal;
-                    if (tryOnOffsetY) tryOnOffsetY.value = offsetYVal;
-                    if (tryOnOffsetX) tryOnOffsetX.value = offsetXVal;
-                    // applyTransform dipanggil pada onload di atas
-                }
-            });
         });
     };
 
@@ -618,7 +545,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const analyze = async () => {
-        if (DEBUG) console.log('🚀 ANALYZE FUNCTION CALLED');
+        // ALWAYS LOG - tidak pakai DEBUG flag
+        console.log('🚀🚀🚀 ANALYZE FUNCTION CALLED - STARTING NOW!');
+        console.log('📋 Session data:', {
+            hasImage: !!dataUrl,
+            hasFaceShape: !!faceShape,
+            userName: userName || 'KOSONG',
+            userPhone: userPhone || 'KOSONG'
+        });
         
         try {
             if (DEBUG) {
@@ -636,28 +570,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             const analyzeUrl = (window.__SCAN_ROUTES__ && window.__SCAN_ROUTES__.analyze) ? window.__SCAN_ROUTES__.analyze : '../analyze';
-            if (DEBUG) {
-                console.log('🌐 Analyze URL:', analyzeUrl);
-                console.log('🔑 CSRF Token:', csrf ? 'EXISTS' : 'MISSING');
-            }
-            
+            // ALWAYS LOG - tidak pakai DEBUG flag
+            console.log('🌐🌐🌐 Analyze URL:', analyzeUrl);
+            console.log('🔑 CSRF Token:', csrf ? 'EXISTS' : 'MISSING');
+            console.log('📤📤📤 Sending request NOW...');
             const resp = await sendImage(dataUrl, apiFaceShape, userName, userPhone, prefLength, prefType, prefCondition);
+            
+            // ALWAYS LOG response status
+            console.log('📥 HTTP Response received:', {
+                status: resp.status,
+                statusText: resp.statusText,
+                ok: resp.ok,
+                contentType: resp.headers.get('content-type') || 'unknown'
+            });
             
             // Handle CORS headers dengan try/catch
             let responseHeaders = {};
             try {
                 responseHeaders = Object.fromEntries(resp.headers.entries());
             } catch (err) {
-                if (DEBUG) console.warn('Cannot read response headers (CORS restriction):', err);
-            }
-            
-            if (DEBUG) {
-                console.log('📥 Response received:', {
-                    status: resp.status,
-                    statusText: resp.statusText,
-                    ok: resp.ok,
-                    headers: responseHeaders
-                });
+                console.warn('⚠️ Cannot read response headers (CORS restriction):', err);
             }
             
             if (!resp.ok) {
@@ -670,21 +602,25 @@ document.addEventListener('DOMContentLoaded', () => {
             let json;
             try {
                 const text = await resp.text();
+                console.log('📄 Response text length:', text.length);
                 json = JSON.parse(text);
+                console.log('✅✅✅ JSON parsed successfully');
             } catch (parseErr) {
-                if (DEBUG) console.error('❌ JSON parse error:', parseErr);
+                console.error('❌❌❌ JSON PARSE ERROR:', parseErr);
                 throw new Error('Invalid JSON response from server');
             }
             
-            if (DEBUG) {
-                console.log('📥 Analyze response:', {
-                    ok: json.ok,
-                    saved: json.saved,
-                    saved_id: json.saved_id,
-                    save_error: json.save_error,
-                    recommendations_count: json.recommendations?.length || 0
-                });
-            }
+            // ALWAYS LOG RESPONSE (tidak pakai DEBUG flag)
+            console.log('📥📥📥 Analyze response received:', {
+                ok: json.ok,
+                saved: json.saved,
+                saved_id: json.saved_id,
+                save_error: json.save_error,
+                recommendations_count: json.recommendations?.length || 0,
+                ai_enabled: json.ai_enabled,
+                ai_enabled_type: typeof json.ai_enabled,
+                all_keys: Object.keys(json)
+            });
             
             // Tampilkan pesan jika data berhasil disimpan
             if (json.saved && json.saved_id) {
@@ -719,11 +655,116 @@ document.addEventListener('DOMContentLoaded', () => {
             
             loading?.classList.add('hidden');
             
-            // PENTING: Render rekomendasi terlebih dahulu
+            // RENDER REKOMENDASI DULU
+            console.log('🔍🔍🔍 Checking if should render recommendations...', {
+                'has_json': !!json,
+                'json_ok': json?.ok,
+                'has_recommendations': !!(json?.recommendations),
+                'recommendations_length': json?.recommendations?.length || 0
+            });
+            
             if (json && json.ok && json.recommendations && json.recommendations.length > 0) {
-                render(json.recommendations);
+                console.log('✅✅✅ Rendering recommendations...', {
+                    'count': json.recommendations.length,
+                    'ai_enabled': json.ai_enabled,
+                    'ai_enabled_type': typeof json.ai_enabled
+                });
                 
-                // Pastikan data tersimpan - jika tidak, tampilkan notifikasi lagi
+                // Render recommendations
+                render(json.recommendations, json.ai_enabled || false);
+                
+                // CHECK AI ENABLED - SIMPLE & DIRECT
+                console.log('🔍🔍🔍 Starting AI check...', {
+                    'ai_enabled_raw': json.ai_enabled,
+                    'ai_enabled_type': typeof json.ai_enabled,
+                    'all_json_keys': Object.keys(json)
+                });
+                
+                const aiEnabled = json.ai_enabled === true || json.ai_enabled === 'true' || json.ai_enabled === 1;
+                console.log('🤖🤖🤖 AI Check result:', {
+                    'raw': json.ai_enabled,
+                    'type': typeof json.ai_enabled,
+                    'enabled': aiEnabled,
+                    'will_create_badge': aiEnabled
+                });
+                
+                // INSERT BADGE JIKA AI ENABLED - GUNAKAN setTimeout UNTUK PASTIKAN DOM READY
+                if (aiEnabled) {
+                    console.log('🎯🎯🎯 AI ENABLED - Creating badge NOW!');
+                    
+                    // Remove existing badge
+                    const existing = document.querySelector('.ai-powered-badge');
+                    if (existing) existing.remove();
+                    
+                    // Create badge
+                    const badge = document.createElement('div');
+                    badge.className = 'ai-powered-badge mt-2 mb-2 inline-flex items-center gap-1.5 sm:gap-2 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-stone-700 border border-purple-200';
+                    badge.innerHTML = `<svg class="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg> <span class="font-semibold text-purple-700">AI-Powered</span> <span class="text-stone-600">Rekomendasi</span>`;
+                    
+                    // Insert badge - GUNAKAN setTimeout UNTUK PASTIKAN DOM READY
+                    setTimeout(() => {
+                        console.log('⏰ setTimeout executed - attempting to insert badge...');
+                        const listEl = document.getElementById('recommendations');
+                        console.log('🔍 List element check:', {
+                            'found': !!listEl,
+                            'has_parent': !!(listEl && listEl.parentNode),
+                            'list_id': listEl?.id,
+                            'list_tag': listEl?.tagName
+                        });
+                        
+                        if (listEl && listEl.parentNode) {
+                            listEl.parentNode.insertBefore(badge, listEl);
+                            console.log('✅✅✅ Badge SUCCESSFULLY inserted before list!');
+                            console.log('📍 Badge element:', badge);
+                            console.log('📍 Badge parent:', badge.parentElement);
+                        } else {
+                            console.warn('⚠️ List not found, trying fallback...');
+                            // Fallback: insert setelah heading
+                            const heading = document.querySelector('h3');
+                            console.log('🔍 Heading check:', {
+                                'found': !!heading,
+                                'has_parent': !!(heading && heading.parentNode),
+                                'heading_text': heading?.textContent?.substring(0, 50)
+                            });
+                            
+                            if (heading && heading.parentNode) {
+                                heading.parentNode.insertBefore(badge, heading.nextSibling);
+                                console.log('✅✅✅ Badge inserted after heading (fallback)');
+                            } else {
+                                // Last resort: append ke list container
+                                const container = listEl?.parentElement || document.querySelector('main') || document.body;
+                                console.log('🔍 Container check:', {
+                                    'found': !!container,
+                                    'container_tag': container?.tagName
+                                });
+                                
+                                if (container) {
+                                    container.insertBefore(badge, listEl || container.firstChild);
+                                    console.log('✅✅✅ Badge inserted in container (last resort)');
+                                } else {
+                                    console.error('❌❌❌ Cannot insert badge - no container found');
+                                }
+                            }
+                        }
+                    }, 100); // Wait 100ms untuk pastikan DOM ready
+                } else {
+                    console.log('⚠️⚠️⚠️ AI disabled - badge will NOT be created', {
+                        'ai_enabled_value': json.ai_enabled,
+                        'ai_enabled_type': typeof json.ai_enabled,
+                        'check_result': aiEnabled
+                    });
+                }
+            } else {
+                console.warn('⚠️⚠️⚠️ Cannot render recommendations:', {
+                    'has_json': !!json,
+                    'json_ok': json?.ok,
+                    'has_recommendations': !!(json?.recommendations),
+                    'recommendations_length': json?.recommendations?.length || 0
+                });
+            }
+            
+            // Pastikan data tersimpan - jika tidak, tampilkan notifikasi lagi
+            if (json && json.recommendations && json.recommendations.length > 0) {
                 if (!json.saved) {
                     if (!json.save_error) {
                         // Jika tidak ada error tapi tidak tersimpan, tampilkan warning
@@ -811,25 +852,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Panggil analyze() dan pastikan data tersimpan
     // analyze() akan menyimpan data ke database - INI WAJIB DIPANGGIL!
-    if (DEBUG) {
-        console.log('🎯 ========== STARTING ANALYZE PROCESS ==========');
-        console.log('📋 Available data from sessionStorage:', {
-            hasDataUrl: !!dataUrl,
-            hasFaceShape: !!faceShape,
-            hasUserName: !!userName,
-            hasUserPhone: !!userPhone,
-            hasPrefLength: !!prefLength,
-            hasPrefType: !!prefType,
-            hasPrefCondition: !!prefCondition,
-            dataUrlLength: dataUrl ? dataUrl.length : 0,
-            userNameValue: userName || 'KOSONG',
-            userPhoneValue: userPhone || 'KOSONG'
-        });
-    }
+    // ALWAYS LOG - tidak pakai DEBUG flag
+    console.log('🎯🎯🎯 ========== STARTING ANALYZE PROCESS ==========');
+    console.log('📋 Available data from sessionStorage:', {
+        hasDataUrl: !!dataUrl,
+        hasFaceShape: !!faceShape,
+        hasUserName: !!userName,
+        hasUserPhone: !!userPhone,
+        hasPrefLength: !!prefLength,
+        hasPrefType: !!prefType,
+        hasPrefCondition: !!prefCondition,
+        dataUrlLength: dataUrl ? dataUrl.length : 0,
+        userNameValue: userName || 'KOSONG',
+        userPhoneValue: userPhone || 'KOSONG'
+    });
     
     // Pastikan analyze() dipanggil - WAJIB untuk menyimpan data
+    console.log('🔍 Checking analyze function...', {
+        'analyze_exists': typeof analyze === 'function',
+        'analyze_type': typeof analyze
+    });
+    
     if (typeof analyze === 'function') {
-        if (DEBUG) console.log('✅ analyze() function exists, calling it NOW...');
+        console.log('✅✅✅ analyze() function exists, calling it NOW...');
         // Panggil analyze() - INI WAJIB untuk menyimpan data ke database
         analyze().then((success) => {
             if (DEBUG) {

@@ -69,6 +69,23 @@
             </div>
         @endif
 
+        <!-- Notification Error (Centered, auto-hide) -->
+        @if(session('error') || ($errors->any() && !old('context')))
+            <div id="center-notification-error" class="fixed inset-0 z-50">
+                <div class="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+                <div class="absolute inset-0 flex items-center justify-center p-4">
+                    <div class="relative z-10 w-full max-w-md rounded-2xl bg-white ring-1 ring-red-200 shadow-xl px-6 py-5 text-center">
+                        <div class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-700 ring-1 ring-red-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5">
+                                <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <p class="text-sm font-semibold text-red-900">{{ session('error') ?? $errors->first() }}</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Modals -->
         <!-- Add Modal -->
         <div id="modal-add" class="fixed inset-0 bg-black/30 backdrop-blur-sm hidden z-40">
@@ -79,9 +96,23 @@
                     </div>
                     <form method="POST" action="{{ route('super.models.store') }}" enctype="multipart/form-data" class="px-6 py-4 space-y-4">
                         @csrf
+                        <input type="hidden" name="context" value="super-add" />
+                        @if ($errors->any() && old('context') === 'super-add')
+                            <div class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-xs border border-red-200">
+                                <div class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4">
+                                        <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>{{ $errors->first() }}</span>
+                                </div>
+                            </div>
+                        @endif
                         <div>
                             <label class="text-sm font-medium">Nama Model</label>
-                            <input name="name" type="text" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required />
+                            <input name="name" type="text" value="{{ old('name') }}" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2 {{ $errors->has('name') && old('context') === 'super-add' ? 'ring-red-300 border-red-300' : '' }}" required />
+                            @if ($errors->has('name') && old('context') === 'super-add')
+                                <p class="text-xs text-red-600 mt-1">{{ $errors->first('name') }}</p>
+                            @endif
                         </div>
                         <div>
                             <label class="text-sm font-medium">Upload Gambar (opsional)</label>
@@ -96,7 +127,6 @@
                             <label class="text-sm font-medium">Panjang</label>
                             <select name="length" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required>
                                 <option value="Pendek">Pendek</option>
-                                <option value="Sedang">Sedang</option>
                                 <option value="Panjang">Panjang</option>
                             </select>
                         </div>
@@ -133,11 +163,21 @@
                         <input type="hidden" name="context" value="super-edit" />
                         <input type="hidden" name="id" id="edit-id" value="{{ old('id') }}" />
                         @if ($errors->any() && old('context')==='super-edit')
-                            <div class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-xs">{{ $errors->first() }}</div>
+                            <div class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-xs border border-red-200">
+                                <div class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4">
+                                        <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>{{ $errors->first() }}</span>
+                                </div>
+                            </div>
                         @endif
                         <div>
                             <label class="text-sm font-medium">Nama Model</label>
-                            <input name="name" id="edit-name" type="text" value="{{ old('name') }}" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required />
+                            <input name="name" id="edit-name" type="text" value="{{ old('name') }}" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2 {{ $errors->has('name') && old('context') === 'super-edit' ? 'ring-red-300 border-red-300' : '' }}" required />
+                            @if ($errors->has('name') && old('context') === 'super-edit')
+                                <p class="text-xs text-red-600 mt-1">{{ $errors->first('name') }}</p>
+                            @endif
                         </div>
                         <div>
                             <label class="text-sm font-medium">Upload Gambar (opsional)</label>
@@ -158,7 +198,6 @@
                             <label class="text-sm font-medium">Panjang</label>
                             <select name="length" id="edit-length" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required>
                                 <option value="Pendek">Pendek</option>
-                                <option value="Sedang">Sedang</option>
                                 <option value="Panjang">Panjang</option>
                             </select>
                         </div>
@@ -281,6 +320,9 @@
                 // Auto hide centered notification
                 const notif = document.getElementById('center-notification');
                 if (notif) setTimeout(() => notif.classList.add('hidden'), 2500);
+                
+                const notifError = document.getElementById('center-notification-error');
+                if (notifError) setTimeout(() => notifError.classList.add('hidden'), 3500);
 
                 // Live search filter for models list
                 const input = document.getElementById('model-search');
@@ -311,20 +353,30 @@
                 };
                 input?.addEventListener('input', apply);
                 apply();
+
+                // Auto-open modal when validation fails
+                try {
+                    const hadErrors = {{ $errors->any() ? 'true' : 'false' }};
+                    const ctx = '{{ old('context') }}';
+                    const oldId = '{{ old('id') }}';
+                    if (hadErrors && ctx === 'super-edit') {
+                        if (oldId) document.getElementById('form-edit')?.setAttribute('action', `{{ url('/super/models') }}/${oldId}`);
+                        // Populate edit form with old values
+                        const editName = document.getElementById('edit-name');
+                        const editTypes = document.getElementById('edit-types');
+                        const editLength = document.getElementById('edit-length');
+                        if (editName && '{{ old('name') }}') editName.value = '{{ old('name') }}';
+                        if (editTypes && '{{ old('types') }}') editTypes.value = '{{ old('types') }}';
+                        if (editLength && '{{ old('length') }}') editLength.value = '{{ old('length') }}';
+                        openModal(modalEdit);
+                    }
+                    if (hadErrors && ctx === 'super-add') {
+                        openModal(modalAdd);
+                    }
+                } catch (e) {
+                    console.error('Error opening modal:', e);
+                }
             });
         </script>
     </div>
 @endsection
-                    <!-- Add Modal (ensure error visibility and context) -->
-                    @push('super-add-modal-context')
-                    @endpush
-                // Auto-open modal when validation fails
-                try {
-                    const hadErrors = JSON.parse('{{ $errors->any() ? 'true' : 'false' }}');
-                    const ctx = '{{ old('context') }}';
-                    const oldId = '{{ old('id') }}';
-                    if (hadErrors && ctx === 'super-edit') {
-            if (oldId) document.getElementById('form-edit')?.setAttribute('action', `{{ url('/super/models') }}/${oldId}`);
-                        openModal(modalEdit);
-                    }
-                } catch {}

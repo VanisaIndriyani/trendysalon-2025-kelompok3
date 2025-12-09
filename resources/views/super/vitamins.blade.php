@@ -51,7 +51,7 @@
             </table>
         </div>
 
-        <!-- Center Notification Modal -->
+        <!-- Center Notification Modal Success -->
         @if(session('success'))
             <div id="center-notif" class="fixed inset-0 z-50 grid place-items-center">
                 <div class="absolute inset-0 bg-black/30"></div>
@@ -60,6 +60,23 @@
                     <div>
                         <p class="font-semibold text-stone-900">Berhasil</p>
                         <p class="text-sm text-stone-600">{{ session('success') }}</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        <!-- Center Notification Modal Error -->
+        @if(session('error') || ($errors->any() && !old('context')))
+            <div id="center-notification-error" class="fixed inset-0 z-50">
+                <div class="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+                <div class="absolute inset-0 flex items-center justify-center p-4">
+                    <div class="relative z-10 w-full max-w-md rounded-2xl bg-white ring-1 ring-red-200 shadow-xl px-6 py-5 text-center">
+                        <div class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-700 ring-1 ring-red-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5">
+                                <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <p class="text-sm font-semibold text-red-900">{{ session('error') ?? $errors->first() }}</p>
                     </div>
                 </div>
             </div>
@@ -75,16 +92,30 @@
                     </div>
                     <form method="POST" action="{{ route('super.vitamins.store') }}" class="px-6 py-4 space-y-4">
                         @csrf
+                        <input type="hidden" name="context" value="super-add" />
+                        @if ($errors->any() && old('context') === 'super-add')
+                            <div class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-xs border border-red-200">
+                                <div class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4">
+                                        <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>{{ $errors->first() }}</span>
+                                </div>
+                            </div>
+                        @endif
                         <div>
                             <label class="text-sm font-medium">Nama Vitamin</label>
-                            <input name="name" type="text" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required />
+                            <input name="name" type="text" value="{{ old('name') }}" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2 {{ $errors->has('name') && old('context') === 'super-add' ? 'ring-red-300 border-red-300' : '' }}" required />
+                            @if ($errors->has('name') && old('context') === 'super-add')
+                                <p class="text-xs text-red-600 mt-1">{{ $errors->first('name') }}</p>
+                            @endif
                         </div>
                         <div>
                             <label class="text-sm font-medium">Tipe Rambut</label>
                             <select name="hair_type" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required>
-                                <option value="Sehat">Sehat</option>
-                                <option value="Kering">Kering</option>
-                                <option value="Rusak">Rusak</option>
+                                <option value="Sehat" {{ old('hair_type') === 'Sehat' ? 'selected' : '' }}>Sehat</option>
+                                <option value="Kering" {{ old('hair_type') === 'Kering' ? 'selected' : '' }}>Kering</option>
+                                <option value="Rusak" {{ old('hair_type') === 'Rusak' ? 'selected' : '' }}>Rusak</option>
                             </select>
                         </div>
                         <div class="flex justify-end gap-3 pt-2">
@@ -106,16 +137,31 @@
                     <form method="POST" action="#" id="form-edit" class="px-6 py-4 space-y-4">
                         @csrf
                         @method('PUT')
+                        <input type="hidden" name="context" value="super-edit" />
+                        <input type="hidden" name="id" id="edit-id" value="{{ old('id') }}" />
+                        @if ($errors->any() && old('context')==='super-edit')
+                            <div class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-xs border border-red-200">
+                                <div class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4">
+                                        <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>{{ $errors->first() }}</span>
+                                </div>
+                            </div>
+                        @endif
                         <div>
                             <label class="text-sm font-medium">Nama Vitamin</label>
-                            <input name="name" id="edit-name" type="text" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required />
+                            <input name="name" id="edit-name" type="text" value="{{ old('name') }}" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2 {{ $errors->has('name') && old('context') === 'super-edit' ? 'ring-red-300 border-red-300' : '' }}" required />
+                            @if ($errors->has('name') && old('context') === 'super-edit')
+                                <p class="text-xs text-red-600 mt-1">{{ $errors->first('name') }}</p>
+                            @endif
                         </div>
                         <div>
                             <label class="text-sm font-medium">Tipe Rambut</label>
                             <select name="hair_type" id="edit-hair_type" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required>
-                                <option value="Sehat">Sehat</option>
-                                <option value="Kering">Kering</option>
-                                <option value="Rusak">Rusak</option>
+                                <option value="Sehat" {{ old('hair_type') === 'Sehat' ? 'selected' : '' }}>Sehat</option>
+                                <option value="Kering" {{ old('hair_type') === 'Kering' ? 'selected' : '' }}>Kering</option>
+                                <option value="Rusak" {{ old('hair_type') === 'Rusak' ? 'selected' : '' }}>Rusak</option>
                             </select>
                         </div>
                         <div class="flex justify-end gap-3 pt-2">
@@ -165,6 +211,8 @@
                 document.querySelectorAll('.btn-edit').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const id = btn.getAttribute('data-id');
+                        const editId = document.getElementById('edit-id');
+                        if (editId) editId.value = id;
                         document.getElementById('edit-name').value = btn.getAttribute('data-name') || '';
                         document.getElementById('edit-hair_type').value = btn.getAttribute('data-hair_type') || 'Sehat';
                         document.getElementById('form-edit').setAttribute('action', `{{ url('/super/vitamins') }}/${id}`);
@@ -186,6 +234,9 @@
                 if (centerNotif) {
                     setTimeout(() => centerNotif.classList.add('hidden'), 2500);
                 }
+                
+                const notifError = document.getElementById('center-notification-error');
+                if (notifError) setTimeout(() => notifError.classList.add('hidden'), 3500);
 
                 // Live search filter
                 const searchInput = document.getElementById('vitamin-search');
@@ -207,6 +258,27 @@
                 };
                 searchInput?.addEventListener('input', applyFilter);
                 applyFilter();
+
+                // Auto-open modal when validation fails
+                try {
+                    const hadErrors = {{ $errors->any() ? 'true' : 'false' }};
+                    const ctx = '{{ old('context') }}';
+                    const oldId = '{{ old('id') }}';
+                    if (hadErrors && ctx === 'super-edit') {
+                        if (oldId) document.getElementById('form-edit')?.setAttribute('action', `{{ url('/super/vitamins') }}/${oldId}`);
+                        // Populate edit form with old values
+                        const editName = document.getElementById('edit-name');
+                        const editHairType = document.getElementById('edit-hair_type');
+                        if (editName && '{{ old('name') }}') editName.value = '{{ old('name') }}';
+                        if (editHairType && '{{ old('hair_type') }}') editHairType.value = '{{ old('hair_type') }}';
+                        modalEdit.classList.remove('hidden');
+                    }
+                    if (hadErrors && ctx === 'super-add') {
+                        modalAdd.classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.error('Error opening modal:', e);
+                }
             });
         </script>
     </div>

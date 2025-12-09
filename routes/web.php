@@ -141,43 +141,61 @@ Route::get('/super/models', function () {
 })->name('super.models');
 Route::post('/super/models', function (Request $request) {
     if (!session('super_logged_in')) return redirect()->route('super.login');
-    $data = $request->validate([
-        'name' => ['required','string','max:255'],
-        'types' => ['required','string','max:255'],
-        'length' => ['required','string','max:50'],
-        'image_file' => ['nullable','image','max:4096'],
-        'face_shapes' => ['nullable','array'],
-        'face_shapes.*' => ['in:Oval,Round,Square,Heart,Oblong'],
-    ]);
-    // Normalize face shapes
-    $fs = $request->input('face_shapes', []);
-    $data['face_shapes'] = is_array($fs) ? implode(',', $fs) : (string) $fs;
-    if ($request->hasFile('image_file')) {
-        $stored = $request->file('image_file')->store('models','public');
-        $data['image'] = 'storage/'.$stored;
+    try {
+        $data = $request->validate([
+            'name' => ['required','string','max:255','unique:hair_models,name'],
+            'types' => ['required','string','max:255'],
+            'length' => ['required','string','max:50'],
+            'image_file' => ['nullable','image','max:4096'],
+            'face_shapes' => ['nullable','array'],
+            'face_shapes.*' => ['in:Oval,Round,Square,Heart,Oblong'],
+        ], [
+            'name.unique' => 'Gagal menambahkan model. Model dengan nama yang sama sudah ada.',
+        ]);
+        // Normalize face shapes
+        $fs = $request->input('face_shapes', []);
+        $data['face_shapes'] = is_array($fs) ? implode(',', $fs) : (string) $fs;
+        if ($request->hasFile('image_file')) {
+            $stored = $request->file('image_file')->store('models','public');
+            $data['image'] = 'storage/'.$stored;
+        }
+        HairModel::create($data);
+        return redirect()->route('super.models')->with('success', 'Model berhasil ditambahkan');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return redirect()->route('super.models')
+            ->withErrors($e->validator)
+            ->withInput($request->all())
+            ->with('error', 'Gagal menambahkan model. Model dengan nama yang sama sudah ada.');
     }
-    HairModel::create($data);
-    return redirect()->route('super.models')->with('success', 'Model berhasil ditambahkan');
 })->name('super.models.store');
 Route::put('/super/models/{hairModel}', function (Request $request, HairModel $hairModel) {
     if (!session('super_logged_in')) return redirect()->route('super.login');
-    $data = $request->validate([
-        'name' => ['required','string','max:255'],
-        'types' => ['required','string','max:255'],
-        'length' => ['required','string','max:50'],
-        'image_file' => ['nullable','image','max:4096'],
-        'face_shapes' => ['nullable','array'],
-        'face_shapes.*' => ['in:Oval,Round,Square,Heart,Oblong'],
-    ]);
-    // Normalize face shapes
-    $fs = $request->input('face_shapes', []);
-    $data['face_shapes'] = is_array($fs) ? implode(',', $fs) : (string) $fs;
-    if ($request->hasFile('image_file')) {
-        $stored = $request->file('image_file')->store('models','public');
-        $data['image'] = 'storage/'.$stored;
+    try {
+        $data = $request->validate([
+            'name' => ['required','string','max:255','unique:hair_models,name,'.$hairModel->id],
+            'types' => ['required','string','max:255'],
+            'length' => ['required','string','max:50'],
+            'image_file' => ['nullable','image','max:4096'],
+            'face_shapes' => ['nullable','array'],
+            'face_shapes.*' => ['in:Oval,Round,Square,Heart,Oblong'],
+        ], [
+            'name.unique' => 'Gagal memperbarui model. Model dengan nama yang sama sudah ada.',
+        ]);
+        // Normalize face shapes
+        $fs = $request->input('face_shapes', []);
+        $data['face_shapes'] = is_array($fs) ? implode(',', $fs) : (string) $fs;
+        if ($request->hasFile('image_file')) {
+            $stored = $request->file('image_file')->store('models','public');
+            $data['image'] = 'storage/'.$stored;
+        }
+        $hairModel->update($data);
+        return redirect()->route('super.models')->with('success', 'Model berhasil diperbarui');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return redirect()->route('super.models')
+            ->withErrors($e->validator)
+            ->withInput($request->all())
+            ->with('error', 'Gagal memperbarui model. Model dengan nama yang sama sudah ada.');
     }
-    $hairModel->update($data);
-    return redirect()->route('super.models')->with('success', 'Model berhasil diperbarui');
 })->name('super.models.update');
 Route::delete('/super/models/{hairModel}', function (HairModel $hairModel) {
     if (!session('super_logged_in')) return redirect()->route('super.login');
@@ -193,21 +211,39 @@ Route::get('/super/vitamins', function () {
 })->name('super.vitamins');
 Route::post('/super/vitamins', function (Request $request) {
     if (!session('super_logged_in')) return redirect()->route('super.login');
-    $data = $request->validate([
-        'name' => ['required','string','max:255'],
-        'hair_type' => ['required','string','max:100'],
-    ]);
-    HairVitamin::create($data);
-    return redirect()->route('super.vitamins')->with('success', 'Vitamin berhasil ditambahkan');
+    try {
+        $data = $request->validate([
+            'name' => ['required','string','max:255','unique:hair_vitamins,name'],
+            'hair_type' => ['required','string','max:100'],
+        ], [
+            'name.unique' => 'Gagal menambahkan vitamin. Vitamin dengan nama yang sama sudah ada.',
+        ]);
+        HairVitamin::create($data);
+        return redirect()->route('super.vitamins')->with('success', 'Vitamin berhasil ditambahkan');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return redirect()->route('super.vitamins')
+            ->withErrors($e->validator)
+            ->withInput($request->all())
+            ->with('error', 'Gagal menambahkan vitamin. Vitamin dengan nama yang sama sudah ada.');
+    }
 })->name('super.vitamins.store');
 Route::put('/super/vitamins/{hairVitamin}', function (Request $request, HairVitamin $hairVitamin) {
     if (!session('super_logged_in')) return redirect()->route('super.login');
-    $data = $request->validate([
-        'name' => ['required','string','max:255'],
-        'hair_type' => ['required','string','max:100'],
-    ]);
-    $hairVitamin->update($data);
-    return redirect()->route('super.vitamins')->with('success', 'Vitamin berhasil diperbarui');
+    try {
+        $data = $request->validate([
+            'name' => ['required','string','max:255','unique:hair_vitamins,name,'.$hairVitamin->id],
+            'hair_type' => ['required','string','max:100'],
+        ], [
+            'name.unique' => 'Gagal memperbarui vitamin. Vitamin dengan nama yang sama sudah ada.',
+        ]);
+        $hairVitamin->update($data);
+        return redirect()->route('super.vitamins')->with('success', 'Vitamin berhasil diperbarui');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return redirect()->route('super.vitamins')
+            ->withErrors($e->validator)
+            ->withInput($request->all())
+            ->with('error', 'Gagal memperbarui vitamin. Vitamin dengan nama yang sama sudah ada.');
+    }
 })->name('super.vitamins.update');
 Route::delete('/super/vitamins/{hairVitamin}', function (HairVitamin $hairVitamin) {
     if (!session('super_logged_in')) return redirect()->route('super.login');
@@ -264,7 +300,51 @@ Route::post('/super/admins/{user}/delete', function (User $user) {
 Route::get('/admin/reports', function () {
     if (!session('admin_logged_in')) return redirect()->route('admin.login');
     $recs = App\Models\Recommendation::query()->orderByDesc('created_at')->get();
-    return view('admin.reports', compact('recs'));
+    
+    // Hitung statistik vitamin berdasarkan hair_condition
+    $vitaminStats = [];
+    $vitamins = App\Models\HairVitamin::all();
+    
+    foreach ($vitamins as $vitamin) {
+        // Hitung berapa kali vitamin ini direkomendasikan
+        // berdasarkan match hair_condition dengan hair_type (case-insensitive + trim)
+        $hairType = trim($vitamin->hair_type);
+        $count = App\Models\Recommendation::whereRaw('LOWER(TRIM(hair_condition)) = ?', [strtolower($hairType)])
+            ->count();
+        
+        $vitaminStats[] = [
+            'name' => $vitamin->name,
+            'count' => $count,
+            'hair_type' => $vitamin->hair_type,
+        ];
+    }
+    
+    // Urutkan dari yang paling banyak direkomendasikan
+    usort($vitaminStats, function($a, $b) {
+        return $b['count'] - $a['count'];
+    });
+    
+    // Ambil TOP 5 vitamin terpopuler
+    $topVitamins = array_slice($vitaminStats, 0, 5);
+    
+    // Hitung model rambut terpopuler
+    $modelCounts = [];
+    foreach ($recs as $rec) {
+        if ($rec->recommended_models) {
+            $models = explode(',', $rec->recommended_models);
+            foreach ($models as $model) {
+                $model = trim($model);
+                if (!empty($model)) {
+                    $modelCounts[$model] = ($modelCounts[$model] ?? 0) + 1;
+                }
+            }
+        }
+    }
+    arsort($modelCounts);
+    $topModel = !empty($modelCounts) ? array_key_first($modelCounts) : 'Oval Layer With Curtain Bangs';
+    $topVitamin = !empty($topVitamins) ? $topVitamins[0]['name'] : 'Vitamin A';
+    
+    return view('admin.reports', compact('recs', 'topVitamins', 'topModel', 'topVitamin', 'vitaminStats'));
 })->name('admin.reports');
 // Export Admin Reports
 Route::get('/admin/reports/export/excel', [ReportsExportController::class, 'excel'])->name('admin.reports.export.excel');
