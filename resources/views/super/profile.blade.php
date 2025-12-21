@@ -11,8 +11,10 @@
 
     @php
         $uid = session('super_user_id');
-        $rel = 'avatars/user_'.$uid.'.jpg';
-        $avatarUrl = \Illuminate\Support\Facades\Storage::disk('public')->exists($rel) ? asset('storage/'.$rel) : asset('img/model1.png');
+        $u = \App\Models\User::find($uid);
+        $displayName = $u?->name ?? 'Super Admin';
+        // Gunakan AvatarHelper untuk generate avatar otomatis
+        $avatarUrl = \App\Helpers\AvatarHelper::getAvatarUrl($uid, $displayName, 'super');
     @endphp
 
     @if(session('success'))
