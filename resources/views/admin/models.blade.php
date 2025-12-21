@@ -81,11 +81,21 @@
                         @csrf
                         <input type="hidden" name="context" value="admin-add" />
                         @if ($errors->any() && old('context')==='admin-add')
-                            <div class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-xs">{{ $errors->first() }}</div>
+                            <div class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-xs border border-red-200">
+                                <div class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4">
+                                        <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>{{ $errors->first() }}</span>
+                                </div>
+                            </div>
                         @endif
                         <div>
                             <label class="text-sm font-medium">Nama Model</label>
-                            <input name="name" type="text" value="{{ old('name') }}" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required />
+                            <input name="name" type="text" value="{{ old('name') }}" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2 {{ $errors->has('name') && old('context') === 'admin-add' ? 'ring-red-300 border-red-300' : '' }}" required />
+                            @if ($errors->has('name') && old('context') === 'admin-add')
+                                <p class="text-xs text-red-600 mt-1">{{ $errors->first('name') }}</p>
+                            @endif
                         </div>
                         <div>
                             <label class="text-sm font-medium">Upload Gambar (opsional)</label>
@@ -137,11 +147,21 @@
                         <input type="hidden" name="context" value="admin-edit" />
                         <input type="hidden" name="id" id="edit-id" value="{{ old('id') }}" />
                         @if ($errors->any() && old('context')==='admin-edit')
-                            <div class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-xs">{{ $errors->first() }}</div>
+                            <div class="rounded-xl bg-red-50 text-red-700 px-3 py-2 text-xs border border-red-200">
+                                <div class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4">
+                                        <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>{{ $errors->first() }}</span>
+                                </div>
+                            </div>
                         @endif
                         <div>
                             <label class="text-sm font-medium">Nama Model</label>
-                            <input name="name" id="edit-name" type="text" value="{{ old('name') }}" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2" required />
+                            <input name="name" id="edit-name" type="text" value="{{ old('name') }}" class="mt-1 w-full rounded-xl ring-1 ring-stone-200 px-3 py-2 {{ $errors->has('name') && old('context') === 'admin-edit' ? 'ring-red-300 border-red-300' : '' }}" required />
+                            @if ($errors->has('name') && old('context') === 'admin-edit')
+                                <p class="text-xs text-red-600 mt-1">{{ $errors->first('name') }}</p>
+                            @endif
                         </div>
                         <div>
                             <label class="text-sm font-medium">Upload Gambar (opsional)</label>
@@ -285,6 +305,9 @@
                 // Auto hide centered notification
                 const notif = document.getElementById('center-notification');
                 if (notif) setTimeout(() => notif.classList.add('hidden'), 2500);
+                
+                const notifError = document.getElementById('center-notification-error');
+                if (notifError) setTimeout(() => notifError.classList.add('hidden'), 3500);
 
                 // Live search filter for models list
                 const input = document.getElementById('model-search');
