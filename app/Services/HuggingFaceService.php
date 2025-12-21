@@ -437,6 +437,7 @@ class HuggingFaceService
             ];
         })
         ->sortByDesc('score')
+        ->unique('name') // ✅ HAPUS DUPLIKASI berdasarkan nama
         ->take(3)
         ->values()
         ->toArray();
@@ -670,6 +671,7 @@ class HuggingFaceService
             ];
         })
         ->sortByDesc('score')
+        ->unique('name') // ✅ HAPUS DUPLIKASI berdasarkan nama
         ->take(3)
         ->values()
         ->toArray();
@@ -729,6 +731,7 @@ class HuggingFaceService
             ];
         })
         ->sortByDesc('score')
+        ->unique('name') // ✅ HAPUS DUPLIKASI berdasarkan nama
         ->take(3)
         ->values()
         ->toArray();

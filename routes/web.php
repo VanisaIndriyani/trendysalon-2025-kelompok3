@@ -165,7 +165,7 @@ Route::post('/super/models', function (Request $request) {
         return redirect()->route('super.models')
             ->withErrors($e->validator)
             ->withInput($request->all())
-            ->with('error', 'Gagal menambahkan model. Model dengan nama yang sama sudah ada.');
+            ->with('error', 'Gagal menambahkan model. ' . $e->validator->errors()->first());
     }
 })->name('super.models.store');
 Route::put('/super/models/{hairModel}', function (Request $request, HairModel $hairModel) {
@@ -194,7 +194,7 @@ Route::put('/super/models/{hairModel}', function (Request $request, HairModel $h
         return redirect()->route('super.models')
             ->withErrors($e->validator)
             ->withInput($request->all())
-            ->with('error', 'Gagal memperbarui model. Model dengan nama yang sama sudah ada.');
+            ->with('error', 'Gagal memperbarui model. ' . $e->validator->errors()->first());
     }
 })->name('super.models.update');
 Route::delete('/super/models/{hairModel}', function (HairModel $hairModel) {
@@ -360,44 +360,62 @@ Route::get('/admin/models', function () {
 // CRUD HairModel via modal forms
 Route::post('/admin/models', function (Request $request) {
     if (!session('admin_logged_in')) return redirect()->route('admin.login');
-    $data = $request->validate([
-        'name' => ['required','string','max:255'],
-        'types' => ['required','string','max:255'],
-        'length' => ['required','string','max:50'],
-        'image_file' => ['nullable','image','max:4096'],
-        'face_shapes' => ['nullable','array'],
-        'face_shapes.*' => ['in:Oval,Round,Square,Heart,Oblong'],
-    ]);
-    // Normalize face shapes
-    $fs = $request->input('face_shapes', []);
-    $data['face_shapes'] = is_array($fs) ? implode(',', $fs) : (string) $fs;
-    if ($request->hasFile('image_file')) {
-        $stored = $request->file('image_file')->store('models','public');
-        $data['image'] = 'storage/'.$stored; // e.g. storage/models/xxx.png
+    try {
+        $data = $request->validate([
+            'name' => ['required','string','max:255','unique:hair_models,name'],
+            'types' => ['required','string','max:255'],
+            'length' => ['required','string','max:50'],
+            'image_file' => ['nullable','image','max:4096'],
+            'face_shapes' => ['nullable','array'],
+            'face_shapes.*' => ['in:Oval,Round,Square,Heart,Oblong'],
+        ], [
+            'name.unique' => 'Model dengan nama yang sama sudah ada. Silakan gunakan nama yang berbeda.',
+        ]);
+        // Normalize face shapes
+        $fs = $request->input('face_shapes', []);
+        $data['face_shapes'] = is_array($fs) ? implode(',', $fs) : (string) $fs;
+        if ($request->hasFile('image_file')) {
+            $stored = $request->file('image_file')->store('models','public');
+            $data['image'] = 'storage/'.$stored; // e.g. storage/models/xxx.png
+        }
+        HairModel::create($data);
+        return redirect()->route('admin.models')->with('success', 'Model berhasil ditambahkan');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return redirect()->route('admin.models')
+            ->withErrors($e->validator)
+            ->withInput()
+            ->with('error', 'Gagal menambahkan model. ' . $e->validator->errors()->first());
     }
-    HairModel::create($data);
-    return redirect()->route('admin.models')->with('success', 'Model berhasil ditambahkan');
 })->name('admin.models.store');
 
 Route::put('/admin/models/{hairModel}', function (Request $request, HairModel $hairModel) {
     if (!session('admin_logged_in')) return redirect()->route('admin.login');
-    $data = $request->validate([
-        'name' => ['required','string','max:255'],
-        'types' => ['required','string','max:255'],
-        'length' => ['required','string','max:50'],
-        'image_file' => ['nullable','image','max:4096'],
-        'face_shapes' => ['nullable','array'],
-        'face_shapes.*' => ['in:Oval,Round,Square,Heart,Oblong'],
-    ]);
-    // Normalize face shapes
-    $fs = $request->input('face_shapes', []);
-    $data['face_shapes'] = is_array($fs) ? implode(',', $fs) : (string) $fs;
-    if ($request->hasFile('image_file')) {
-        $stored = $request->file('image_file')->store('models','public');
-        $data['image'] = 'storage/'.$stored;
+    try {
+        $data = $request->validate([
+            'name' => ['required','string','max:255','unique:hair_models,name,'.$hairModel->id],
+            'types' => ['required','string','max:255'],
+            'length' => ['required','string','max:50'],
+            'image_file' => ['nullable','image','max:4096'],
+            'face_shapes' => ['nullable','array'],
+            'face_shapes.*' => ['in:Oval,Round,Square,Heart,Oblong'],
+        ], [
+            'name.unique' => 'Model dengan nama yang sama sudah ada. Silakan gunakan nama yang berbeda.',
+        ]);
+        // Normalize face shapes
+        $fs = $request->input('face_shapes', []);
+        $data['face_shapes'] = is_array($fs) ? implode(',', $fs) : (string) $fs;
+        if ($request->hasFile('image_file')) {
+            $stored = $request->file('image_file')->store('models','public');
+            $data['image'] = 'storage/'.$stored;
+        }
+        $hairModel->update($data);
+        return redirect()->route('admin.models')->with('success', 'Model berhasil diperbarui');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return redirect()->route('admin.models')
+            ->withErrors($e->validator)
+            ->withInput()
+            ->with('error', 'Gagal memperbarui model. ' . $e->validator->errors()->first());
     }
-    $hairModel->update($data);
-    return redirect()->route('admin.models')->with('success', 'Model berhasil diperbarui');
 })->name('admin.models.update');
 
 // API rekomendasi berdasarkan bentuk wajah (simple rule-based)
@@ -466,14 +484,12 @@ Route::delete('/admin/vitamins/{hairVitamin}', function (HairVitamin $hairVitami
 })->name('admin.vitamins.destroy');
 // Halaman Scan Terpisah
 Route::get('/scan', [UserHomeController::class, 'scan'])->name('scan');
-// Halaman Kamera
+// Halaman Kamera - ✅ DENGAN JS (KAMERA) + FALLBACK FORM UPLOAD
 Route::get('/scan/camera', function () {
     return view('user.scan_camera');
 })->name('scan.camera');
-// Halaman Hasil
-Route::get('/scan/results', function () {
-    return view('user.scan_result');
-})->name('scan.results');
+// Halaman Hasil - ✅ PAKAI CONTROLLER DENGAN VALIDASI SESSION
+Route::get('/scan/results', [ScanController::class, 'results'])->name('scan.results');
 
 // Endpoint analisis AI (terima base64 image, kembalikan rekomendasi)
 Route::post('/scan/analyze', [ScanController::class, 'analyze'])->name('scan.analyze');

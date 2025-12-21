@@ -32,11 +32,11 @@
                 <!-- Profile card -->
                 @php
                     $uid = session('admin_user_id');
-                    $rel = 'avatars/user_'.$uid.'.jpg';
-                    $avatarUrl = \Illuminate\Support\Facades\Storage::disk('public')->exists($rel) ? asset('storage/'.$rel) : asset('img/model1.png');
                     $u = \App\Models\User::find($uid);
                     $displayName = $u?->name ?? 'Admin';
                     $displayEmail = $u?->email ?? 'admin@trendysalon.com';
+                    // Gunakan AvatarHelper untuk generate avatar otomatis
+                    $avatarUrl = \App\Helpers\AvatarHelper::getAvatarUrl($uid, $displayName, 'admin');
                 @endphp
                 <div class="mt-5 rounded-xl border border-pink-200 bg-gradient-to-br from-pink-50 to-pink-100/50 p-4 flex items-center gap-3 transition-all duration-300 hover:shadow-md hover:border-pink-300 group">
                     <div class="h-10 w-10 rounded-full overflow-hidden ring-2 ring-pink-200 transition-all duration-300 group-hover:ring-pink-400 group-hover:scale-110">

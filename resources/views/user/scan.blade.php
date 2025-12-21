@@ -25,7 +25,7 @@
                 results: "{{ url('/scan/results') }}",
             };
         </script>
-        <script src="{{ asset('build/assets/app-B8ho6jJ0.js') }}" defer></script>
+        <script src="{{ asset('build/assets/app-CWlvN2px.js') }}" defer></script>
     </head>
     <body class="bg-stone-200 font-sans text-stone-800">
         <!-- Header / Navigation -->
@@ -46,65 +46,94 @@
           
         </header>
 
-        <main class="mx-auto max-w-screen-md px-3 sm:px-4">
+        <main class="mx-auto max-w-screen-md px-3 sm:px-4 pb-6 sm:pb-8">
             <!-- Scan Form -->
-            <section class="mt-4 sm:mt-6 rounded-xl bg-stone-100 px-3 sm:px-4 py-4 sm:py-6 shadow-lg hover:shadow-xl transition-all duration-300 animate-fade-in-up">
-                <div class="flex items-center gap-2 sm:gap-3">
+            <section class="mt-4 sm:mt-6 rounded-2xl bg-white px-4 sm:px-6 py-5 sm:py-7 shadow-xl border border-stone-200/50 transition-all duration-300 animate-fade-in-up">
+                <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
                     <a href="{{ route('user.home') }}" class="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-lg border border-stone-300 bg-pink-100/60 text-stone-700 touch-manipulation transition-all duration-300 hover:bg-pink-200 hover:scale-110 hover:shadow-md group" aria-label="Kembali">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:-translate-x-1"><path d="M15 6l-6 6 6 6" stroke-width="1.5"/></svg>
                     </a>
-                    <h2 class="text-base sm:text-lg font-semibold bg-gradient-to-r from-pink-600 to-amber-600 bg-clip-text text-transparent animate-gradient">Informasi Awal</h2>
+                    <h2 class="text-base sm:text-lg font-bold bg-gradient-to-r from-pink-600 to-amber-600 bg-clip-text text-transparent animate-gradient">Informasi Awal</h2>
                 </div>
-                <div class="mt-3 sm:mt-4 rounded-xl bg-gradient-to-r from-pink-100 via-pink-50 to-amber-100 px-3 sm:px-4 py-3 sm:py-4 shadow-md animate-pulse-slow">
-                    <p class="text-center font-semibold text-sm sm:text-base text-stone-800">Ceritakan Tentang Rambut Anda</p>
-                    <p class="mt-1 text-center text-[10px] sm:text-xs text-stone-700 leading-relaxed">jawab beberapa pertanyaan untuk hasil rekomendasi yang lebih akurat</p>
+                
+                <!-- Header Card -->
+                <div class="rounded-2xl bg-gradient-to-br from-pink-100 via-pink-50 to-amber-100 px-4 sm:px-5 py-4 sm:py-5 text-center shadow-lg border border-pink-200/50 mb-5 sm:mb-6">
+                    <div class="flex items-center justify-center gap-2 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5 sm:h-6 sm:w-6 text-pink-600">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <p class="font-bold text-base sm:text-lg text-pink-900">Ceritakan Tentang Rambut Anda</p>
+                    </div>
+                    <p class="text-xs sm:text-sm text-stone-700 leading-relaxed">Jawab beberapa pertanyaan untuk hasil rekomendasi yang lebih akurat</p>
                 </div>
 
-                <form id="scanForm" class="mt-3 sm:mt-4 space-y-3 sm:space-y-4" novalidate>
-                    <div class="rounded-xl border border-stone-200 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 group animate-fade-in-up">
-                        <label class="text-xs sm:text-sm font-semibold flex items-center gap-1">
+                <form id="scanForm" class="space-y-4 sm:space-y-5" novalidate>
+                    <div class="rounded-2xl border-2 border-stone-200 bg-gradient-to-br from-stone-50 to-white p-4 sm:p-5 shadow-md hover:shadow-lg hover:border-pink-300 transition-all duration-300 group animate-fade-in-up">
+                        <label class="text-sm sm:text-base font-bold flex items-center gap-2 mb-3 text-stone-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4 text-pink-500">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="12" cy="7" r="4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                             <span>Nama</span>
-                            <span class="text-pink-600 animate-pulse-slow">*</span>
+                            <span class="text-pink-600">*</span>
                         </label>
-                        <input id="nameInput" name="name" type="text" placeholder="Nama" class="mt-2 w-full rounded-lg border border-stone-300 bg-stone-50 px-3 py-2.5 sm:py-2 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 focus:bg-white group-hover:border-pink-300" required />
+                        <input id="nameInput" name="name" type="text" placeholder="Masukkan nama Anda" class="w-full rounded-xl border-2 border-stone-300 bg-white px-4 py-3 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 group-hover:border-pink-300" required />
                     </div>
-                    <div class="rounded-xl border border-stone-200 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 group animate-fade-in-up">
-                        <label class="text-xs sm:text-sm font-semibold flex items-center gap-1">
+                    
+                    <div class="rounded-2xl border-2 border-stone-200 bg-gradient-to-br from-stone-50 to-white p-4 sm:p-5 shadow-md hover:shadow-lg hover:border-pink-300 transition-all duration-300 group animate-fade-in-up">
+                        <label class="text-sm sm:text-base font-bold flex items-center gap-2 mb-3 text-stone-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4 text-pink-500">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                             <span>Nomor Ponsel</span>
-                            <span class="text-pink-600 animate-pulse-slow">*</span>
+                            <span class="text-pink-600">*</span>
                         </label>
-                        <input id="phoneInput" name="phone" type="tel" placeholder="Nomor Ponsel" class="mt-2 w-full rounded-lg border border-stone-300 bg-stone-50 px-3 py-2.5 sm:py-2 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 focus:bg-white group-hover:border-pink-300" required />
+                        <input id="phoneInput" name="phone" type="tel" placeholder="Masukkan nomor ponsel" class="w-full rounded-xl border-2 border-stone-300 bg-white px-4 py-3 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 group-hover:border-pink-300" required />
                     </div>
-                    <div class="rounded-xl border border-stone-200 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 group animate-fade-in-up">
-                        <label class="text-xs sm:text-sm font-semibold flex items-center gap-1">
+                    
+                    <div class="rounded-2xl border-2 border-stone-200 bg-gradient-to-br from-stone-50 to-white p-4 sm:p-5 shadow-md hover:shadow-lg hover:border-pink-300 transition-all duration-300 group animate-fade-in-up">
+                        <label class="text-sm sm:text-base font-bold flex items-center gap-2 mb-3 text-stone-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4 text-pink-500">
+                                <path d="M12 2v20M2 12h20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                             <span>Model Panjang Rambut</span>
-                            <span class="text-pink-600 animate-pulse-slow">*</span>
+                            <span class="text-pink-600">*</span>
                         </label>
-                        <select id="lengthSelect" name="length" class="mt-2 w-full rounded-lg border border-stone-300 bg-stone-50 px-3 py-2.5 sm:py-2 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 focus:bg-white group-hover:border-pink-300 cursor-pointer" required>
+                        <select id="lengthSelect" name="length" class="w-full rounded-xl border-2 border-stone-300 bg-white px-4 py-3 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 group-hover:border-pink-300 cursor-pointer" required>
                             <option value="" selected>Pilih Model Panjang Rambut</option>
                             @foreach(($lengths ?? []) as $opt)
                                 <option value="{{ $opt }}">{{ $opt }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="rounded-xl border border-stone-200 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 group animate-fade-in-up">
-                        <label class="text-xs sm:text-sm font-semibold flex items-center gap-1">
+                    
+                    <div class="rounded-2xl border-2 border-stone-200 bg-gradient-to-br from-stone-50 to-white p-4 sm:p-5 shadow-md hover:shadow-lg hover:border-pink-300 transition-all duration-300 group animate-fade-in-up">
+                        <label class="text-sm sm:text-base font-bold flex items-center gap-2 mb-3 text-stone-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4 text-pink-500">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                             <span>Jenis Rambut</span>
-                            <span class="text-pink-600 animate-pulse-slow">*</span>
+                            <span class="text-pink-600">*</span>
                         </label>
-                        <select id="typeSelect" name="type" class="mt-2 w-full rounded-lg border border-stone-300 bg-stone-50 px-3 py-2.5 sm:py-2 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 focus:bg-white group-hover:border-pink-300 cursor-pointer" required>
+                        <select id="typeSelect" name="type" class="w-full rounded-xl border-2 border-stone-300 bg-white px-4 py-3 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 group-hover:border-pink-300 cursor-pointer" required>
                             <option value="" selected>Pilih Jenis Rambut</option>
                             @foreach(($types ?? []) as $opt)
                                 <option value="{{ $opt }}">{{ $opt }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="rounded-xl border border-stone-200 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 group animate-fade-in-up">
-                        <label class="text-xs sm:text-sm font-semibold flex items-center gap-1">
+                    
+                    <div class="rounded-2xl border-2 border-stone-200 bg-gradient-to-br from-stone-50 to-white p-4 sm:p-5 shadow-md hover:shadow-lg hover:border-pink-300 transition-all duration-300 group animate-fade-in-up">
+                        <label class="text-sm sm:text-base font-bold flex items-center gap-2 mb-3 text-stone-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-4 w-4 text-pink-500">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                             <span>Tipe Rambut</span>
-                            <span class="text-pink-600 animate-pulse-slow">*</span>
+                            <span class="text-pink-600">*</span>
                         </label>
-                        <select id="conditionSelect" name="condition" class="mt-2 w-full rounded-lg border border-stone-300 bg-stone-50 px-3 py-2.5 sm:py-2 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 focus:bg-white group-hover:border-pink-300 cursor-pointer" required>
+                        <select id="conditionSelect" name="condition" class="w-full rounded-xl border-2 border-stone-300 bg-white px-4 py-3 text-sm sm:text-base outline-none transition-all duration-300 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 group-hover:border-pink-300 cursor-pointer" required>
                             <option value="" selected>Pilih Tipe Rambut</option>
                             @foreach(($conditions ?? []) as $opt)
                                 <option value="{{ $opt }}">{{ $opt }}</option>
@@ -112,19 +141,25 @@
                         </select>
                     </div>
 
-                    <div class="mt-5 sm:mt-6 flex justify-center">
-                        <button id="scanSubmit" data-target="{{ route('scan.camera') }}" type="button" class="group relative inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-amber-200 to-amber-300 px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-stone-900 shadow-md hover:shadow-xl hover:from-amber-300 hover:to-amber-400 active:translate-y-px touch-manipulation transition-all duration-300 overflow-hidden">
+                    <div class="mt-6 sm:mt-8 flex justify-center">
+                        <button id="scanSubmit" data-target="{{ route('scan.camera') }}" type="button" class="group relative inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-pink-500 via-pink-500 to-rose-500 px-8 sm:px-10 py-4 sm:py-4 text-sm sm:text-base font-bold text-white shadow-xl hover:shadow-2xl hover:from-pink-600 hover:via-pink-600 hover:to-rose-600 active:scale-95 touch-manipulation transition-all duration-300 overflow-hidden">
                             <!-- Shimmer effect -->
                             <span class="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent"></span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5 relative z-10">
+                                <path d="M4 7h3l2-2h6l2 2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" stroke-width="2"/>
+                                <circle cx="12" cy="13" r="3" stroke-width="2"/>
+                            </svg>
                             <span class="relative z-10">Lanjutkan Scan</span>
-                            <span class="grid h-5 w-5 sm:h-6 sm:w-6 place-items-center rounded-full bg-amber-100 border border-stone-300 text-stone-700 text-sm sm:text-base transition-transform duration-300 group-hover:translate-x-1 group-hover:scale-110 relative z-10">›</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5 relative z-10 transition-transform duration-300 group-hover:translate-x-1">
+                                <path d="M5 12h14M12 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                         </button>
                     </div>
                 </form>
             </section>
 
-            <footer class="mt-8 sm:mt-10 pb-8 sm:pb-10 text-center text-[10px] sm:text-xs text-stone-500 animate-fade-in">
-                &copy; {{ date('Y') }} Trendy Salon
+            <footer class="mt-8 sm:mt-10 pb-6 sm:pb-8 text-center text-xs sm:text-sm text-stone-500 animate-fade-in">
+                &copy; {{ date('Y') }} Trendy Salon. All rights reserved.
             </footer>
         </main>
 

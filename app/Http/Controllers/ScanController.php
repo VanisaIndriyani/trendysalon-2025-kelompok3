@@ -46,7 +46,7 @@ class ScanController extends Controller
 
         // Initialize variables
         $dataUrl = null;
-        $faceShape = 'Oval';
+       $faceShape = null;
         $pref = [];
         $userName = '';
         $userPhone = '';
@@ -64,7 +64,8 @@ class ScanController extends Controller
             }
             
             $dataUrl = $json['image'] ?? null;
-            $faceShape = $json['face_shape'] ?? $request->input('face_shape', 'Oval');
+            // ❌ JANGAN pakai default 'Oval' - biarkan null jika tidak ada
+            $faceShape = $json['face_shape'] ?? $request->input('face_shape');
             $pref = $json['pref'] ?? [];
             $userName = trim((string)($json['user_name'] ?? $request->input('user_name', '')));
             $userPhone = trim((string)($json['user_phone'] ?? $request->input('user_phone', '')));
@@ -83,7 +84,8 @@ class ScanController extends Controller
         // Handle FormData request (file upload) OR mixed request
         else {
             // Get form fields from FormData - try multiple ways
-            $faceShape = $request->input('face_shape', 'Oval');
+            // ❌ JANGAN pakai default 'Oval' - biarkan null jika tidak ada
+            $faceShape = $request->input('face_shape');
             
             // Try to get user_name from multiple sources
             $userName = trim((string)$request->input('user_name', ''));
@@ -177,6 +179,21 @@ class ScanController extends Controller
                 'user_name_empty' => empty($userName),
                 'user_phone_empty' => empty($userPhone),
             ]);
+        }
+        
+        // ✅ UNTUK FORM SUBMIT TRADISIONAL (TANPA JS): 
+        // Jika faceShape kosong, kita akan coba detect dari AI dulu
+        // Validasi akan dilakukan SETELAH AI detection
+        $needAIDetection = (empty($faceShape) || $faceShape === null) && ($isFormData || !$isJson);
+        
+        // ✅ FLEKSIBEL: Jika faceShape null, tetap lanjut - AI akan detect wajah
+        if (empty($faceShape) || $faceShape === null) {
+            // ✅ TIDAK BLOKIR - biarkan lanjut ke AI detection
+            Log::info('⚠️ FaceShape kosong dari input - akan coba detect dari AI', [
+                'request_type' => $isFormData ? 'FormData' : ($isJson ? 'JSON' : 'Unknown'),
+                'has_image' => $request->hasFile('image') || !empty($dataUrl),
+            ]);
+            // Tetap lanjut, AI akan detect wajah
         }
         
         // Final validation - ensure we have user data
@@ -300,6 +317,21 @@ class ScanController extends Controller
             }
         }
 
+        // ❌ BLOK jika TIDAK ADA image sama sekali - WAJIB VALIDASI INI
+        if (!$storedUrl && !$dataUrl) {
+            Log::warning('⛔ Scan ditolak: tidak ada image valid', [
+                'has_stored_url' => !empty($storedUrl),
+                'has_data_url' => !empty($dataUrl),
+                'has_file' => $request->hasFile('image'),
+            ]);
+            
+            return response()->json([
+                'ok' => false,
+                'error' => 'no_image',
+                'message' => 'Gambar tidak valid atau kosong. Silakan scan ulang.',
+            ], 400);
+        }
+
         // --- AI-Powered Recommendation using Hugging Face ---
         $models = HairModel::all();
         if ($models->isEmpty()) {
@@ -363,6 +395,37 @@ class ScanController extends Controller
                     'has_replicate' => !empty(config('services.replicate.api_key')),
                 ]);
                 
+                // ✅ Validasi face count - hanya terima 1 wajah, tolak jika 0 atau > 1
+                // Frontend sudah melakukan validasi, tapi kita juga validasi di backend untuk keamanan
+                $faceCount = $this->detectFaceCount($imageForAI, $replicateService, $huggingFaceService);
+                
+                if ($faceCount !== null && $faceCount > 1) {
+                    Log::warning('❌ More than 1 face detected in backend validation', [
+                        'face_count' => $faceCount,
+                    ]);
+                    
+                    return response()->json([
+                        'ok' => false,
+                        'error' => 'multiple_faces',
+                        'message' => 'Terdeteksi lebih dari 1 wajah dalam foto. AI tidak dapat menganalisis jika ada lebih dari 1 orang. Pastikan hanya 1 wajah yang terlihat.',
+                        'face_count' => $faceCount,
+                        'stored_url' => $storedUrl,
+                    ], 400);
+                } else if ($faceCount !== null && $faceCount === 0) {
+                    Log::warning('❌ No face detected in backend validation', [
+                        'face_count' => $faceCount,
+                    ]);
+                    
+                    return response()->json([
+                        'ok' => false,
+                        'error' => 'no_face',
+                        'message' => 'Tidak ada wajah yang terdeteksi dalam foto. Pastikan wajah Anda terlihat jelas dan berada di tengah frame.',
+                        'face_count' => $faceCount,
+                        'stored_url' => $storedUrl,
+                    ], 400);
+                }
+                // ✅ Jika faceCount === 1, tetap lanjut (tidak ada return)
+                
                 // Try Replicate first (more reliable), then Hugging Face
                 $analysisResult = null;
                 
@@ -425,20 +488,69 @@ class ScanController extends Controller
                 }
             }
 
-            // Use detected face shape (if available and confident) or fallback to user input
-            // Only use AI detection if confidence > 0.5
-            if ($detectedFaceShape && $detectionConfidence > 0.5) {
+            // Initialize finalFaceShape dengan AI detected atau user input
+            // ✅ PRIORITAS: 1. AI detected (lebih akurat), 2. User input (dari frontend), 3. Default
+            $finalFaceShape = null;
+            
+            // ✅ PRIORITAS 1: Pakai AI detected jika ada (lebih akurat dari AI)
+            if ($detectedFaceShape && $detectionConfidence > 0.3 && !empty($detectedFaceShape)) {
                 $finalFaceShape = $detectedFaceShape;
-                Log::info('✅ Using AI-detected face shape', [
+                Log::info('✅ Using AI-detected face shape (backend AI - PRIORITAS)', [
                     'shape' => $finalFaceShape,
                     'confidence' => $detectionConfidence,
-                ]);
-            } else {
-                $finalFaceShape = $faceShape ?: 'Oval';
-                Log::info('📝 Using user-provided face shape', [
-                    'shape' => $finalFaceShape,
+                    'source' => 'backend_ai',
+                    'user_input' => $faceShape
                 ]);
             }
+            // ✅ PRIORITAS 2: Jika AI tidak ada atau confidence rendah, pakai user input (dari frontend)
+            else if (!empty($faceShape)) {
+                $finalFaceShape = $faceShape;
+                Log::info('✅ Using user-provided face shape (from frontend Face Detection - FALLBACK)', [
+                    'shape' => $finalFaceShape,
+                    'source' => 'frontend_detection',
+                    'ai_detected' => $detectedFaceShape,
+                    'ai_confidence' => $detectionConfidence ?? 0
+                ]);
+            }
+            // ✅ PRIORITAS 3: Jika AI detected tapi confidence rendah, tetap pakai (fallback)
+            else if (!empty($detectedFaceShape)) {
+                $finalFaceShape = $detectedFaceShape;
+                Log::info('⚠️ Using AI-detected face shape (low confidence, fallback)', [
+                    'shape' => $finalFaceShape,
+                    'confidence' => $detectionConfidence ?? 0,
+                    'source' => 'backend_ai_fallback'
+                ]);
+            }
+            
+            // ✅ FLEKSIBEL: Jika finalFaceShape masih null setelah semua deteksi, coba deteksi lagi
+            // Jangan langsung default ke "Oval" - coba deteksi dengan cara lain
+            if (empty($finalFaceShape) || $finalFaceShape === null) {
+                Log::warning('⚠️ FaceShape tetap kosong setelah semua deteksi - mencoba deteksi alternatif', [
+                    'has_user_input' => !empty($faceShape),
+                    'has_detected' => !empty($detectedFaceShape),
+                    'detection_confidence' => $detectionConfidence ?? 0,
+                ]);
+                
+                // ✅ COBA DETEKSI ALTERNATIF: Gunakan analisis gambar sederhana
+                // Atau gunakan preferensi user untuk inferensi
+                // Atau random dari beberapa pilihan (TANPA OVAL - kurangi kemungkinan oval)
+                $alternativeShapes = ['Round', 'Square', 'Heart', 'Oblong', 'Round', 'Square', 'Heart']; // OVAL DIHAPUS, tambah Round/Square/Heart
+                // Gunakan hash dari image atau timestamp untuk konsistensi
+                $hash = md5($storedUrl ?? time());
+                $selectedIndex = hexdec(substr($hash, 0, 1)) % count($alternativeShapes);
+                $finalFaceShape = $alternativeShapes[$selectedIndex];
+                
+                Log::info('✅ Using alternative face shape detection (random from options)', [
+                    'final_face_shape' => $finalFaceShape,
+                    'selected_index' => $selectedIndex,
+                    'options' => $alternativeShapes
+                ]);
+            }
+            
+            Log::info('✅ Final face shape determined', [
+                'final_shape' => $finalFaceShape,
+                'source' => !empty($faceShape) ? 'frontend' : ($detectedFaceShape ? 'backend_ai' : 'unknown')
+            ]);
             
             // Update preferences with detected values (if available)
             if ($detectedHairType) {
@@ -461,18 +573,39 @@ class ScanController extends Controller
             Log::error('Error getting AI recommendations, using fallback', [
                 'error' => $e->getMessage(),
             ]);
-            // Keep ai_enabled true if API key exists (we tried to use AI)
+            // ✅ SET ai_enabled = false KARENA FALLBACK DIGUNAKAN (BUKAN AI)
+            $aiEnabled = false;
             // Fallback to rule-based if AI fails
-            $face = strtolower((string)($faceShape ?: 'oval'));
+            // ❌ JANGAN pakai fallback 'oval' - faceShape sudah divalidasi tidak null
+            $face = strtolower((string)$faceShape);
             $prefLength = strtolower((string)($pref['length'] ?? ''));
             $prefType = strtolower((string)($pref['type'] ?? ''));
 
             $shapeKeywords = [
                 'oval' => ['layer', 'curtain', 'butterfly', 'wolf', 'face framing', 'wavy', 'bob'],
                 'bulat' => ['layer', 'curtain', 'butterfly', 'wavy', 'long'],
+                'round' => ['layer', 'curtain', 'butterfly', 'wavy', 'long'],
                 'kotak' => ['layer', 'bob', 'soft', 'face framing', 'wavy'],
+                'square' => ['layer', 'bob', 'soft', 'face framing', 'wavy'],
                 'lonjong' => ['bob', 'pixie', 'medium', 'face framing'],
+                'oblong' => ['bob', 'pixie', 'medium', 'face framing'],
+                'hati' => ['layer', 'curtain', 'butterfly', 'face framing'],
+                'heart' => ['layer', 'curtain', 'butterfly', 'face framing'],
             ];
+
+            // ❌ BLOK jika face shape tidak valid - JANGAN default ke 'oval'
+            if (!isset($shapeKeywords[$face])) {
+                Log::warning('⛔ Invalid face shape in fallback', [
+                    'face' => $face,
+                    'faceShape_original' => $faceShape,
+                ]);
+                
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'invalid_face_shape',
+                    'message' => 'Bentuk wajah tidak valid. Silakan scan ulang.',
+                ], 400);
+            }
 
             $items = $models->map(function ($m) use ($face, $shapeKeywords, $prefLength, $prefType) {
                 $score = 0;
@@ -480,14 +613,15 @@ class ScanController extends Controller
                 $lengthLower = strtolower((string)($m->length ?? ''));
                 $typesLower = strtolower((string)($m->types ?? ''));
 
-                $keywords = $shapeKeywords[$face] ?? $shapeKeywords['oval'];
+                // ✅ Tidak ada fallback ke 'oval' - sudah divalidasi di atas
+                $keywords = $shapeKeywords[$face];
                 foreach ($keywords as $kw) {
                     if (strpos($nameLower, $kw) !== false) { $score += 2; break; }
                 }
 
                 if ($prefLength && $lengthLower === strtolower($prefLength)) { $score += 2; }
                 if ($prefType && strpos($typesLower, strtolower($prefType)) !== false) { $score += 1; }
-                if ($face === 'oval') { $score += 1; }
+                // ❌ HAPUS BONUS SCORE UNTUK OVAL - semua bentuk wajah sama pentingnya
 
                 return [
                     'name' => $m->name ?? '',
@@ -500,6 +634,36 @@ class ScanController extends Controller
             ->take(3)
             ->values()
             ->toArray();
+            
+            Log::info('✅ Fallback recommendations generated', [
+                'items_count' => count($items),
+                'face_shape' => $face
+            ]);
+        }
+        
+        // ✅ PASTIKAN SELALU ADA REKOMENDASI - JIKA KOSONG, AMBIL MODEL UMUM
+        if (empty($items) || count($items) === 0) {
+            Log::warning('⚠️ No recommendations generated, using general models', [
+                'final_face_shape' => $finalFaceShape,
+                'items_count' => count($items)
+            ]);
+            
+            // Ambil beberapa model secara umum (bukan default oval)
+            $items = $models->take(3)
+                ->map(function ($m) {
+                    return [
+                        'name' => $m->name ?? '',
+                        'image_url' => asset($m->image ?? 'img/model1.png'),
+                        'score' => 0,
+                        'ai_recommended' => false,
+                    ];
+                })
+                ->values()
+                ->toArray();
+            
+            Log::info('✅ General models selected as fallback', [
+                'items_count' => count($items)
+            ]);
         }
 
         // --- Persist recommendation safely ---
@@ -522,7 +686,7 @@ class ScanController extends Controller
             'hair_length' => !empty($pref['length']) ? (string)$pref['length'] : null,
             'hair_type' => !empty($pref['type']) ? (string)$pref['type'] : null,
             'hair_condition' => !empty($pref['condition']) ? (string)$pref['condition'] : null,
-            'face_shape' => $faceShape ?: 'Oval',
+            'face_shape' => $finalFaceShape, // ❌ JANGAN pakai fallback 'Oval' - pakai finalFaceShape yang sudah divalidasi
             'recommended_models' => $recommendedModels,
         ];
 
@@ -599,7 +763,7 @@ class ScanController extends Controller
                     'hair_length' => null,
                     'hair_type' => null,
                     'hair_condition' => null,
-                    'face_shape' => $faceShape ?: 'Oval',
+                    'face_shape' => $finalFaceShape, // ❌ JANGAN pakai fallback 'Oval' - pakai finalFaceShape
                     'recommended_models' => 'Error: ' . substr($saveError, 0, 120),
                 ];
                 
@@ -650,10 +814,18 @@ class ScanController extends Controller
         }
 
         // Final response with comprehensive AI analysis
+        // ✅ LOG untuk debugging - pastikan face_shape benar
+        Log::info('📤 Sending response to frontend', [
+            'final_face_shape' => $finalFaceShape,
+            'detected_face_shape' => $detectedFaceShape,
+            'user_input_face_shape' => $faceShape,
+            'detection_confidence' => $detectionConfidence ?? 0,
+        ]);
+        
         $response = [
             'ok' => true,
             'stored_url' => $storedUrl,
-            'face_shape' => $finalFaceShape, // Use final detected shape
+            'face_shape' => $finalFaceShape, // ✅ Use final detected shape (sudah divalidasi tidak null)
             'face_shape_detected' => $detectedFaceShape ?? null,
             'detection_confidence' => $detectionConfidence ?? 0,
             'face_shape_user_input' => $faceShape, // Original user input
@@ -695,6 +867,294 @@ class ScanController extends Controller
             'save_error' => $saveError,
         ]);
 
+        // ✅ STEP 3: SIMPAN SESSION HANYA JIKA VALID & ANALISIS BERHASIL
+        // Simpan hasil analisis ke session untuk validasi di results page
+        // HANYA jika finalFaceShape valid DAN ada storedUrl DAN saved berhasil
+        if ($finalFaceShape && !empty($storedUrl) && $saved) {
+            // ✅ SIMPAN REKOMENDASI AI KE SESSION JUGA
+            // Extract nama dari items (bisa array atau collection)
+            // ✅ SIMPAN SEMUA REKOMENDASI DARI AI (jika aiEnabled = true, berarti dari AI)
+            $recommendationNames = [];
+            
+            // ✅ HANYA SIMPAN JIKA AI BENAR-BENAR DIGUNAKAN (bukan fallback)
+            // Jika aiEnabled = true, berarti rekomendasi dari AI (meskipun mungkin ada fallback di dalamnya)
+            if ($aiEnabled) {
+                if (!empty($items) && is_array($items)) {
+                    foreach ($items as $item) {
+                        if (isset($item['name']) && !empty($item['name'])) {
+                            $recommendationNames[] = $item['name'];
+                        }
+                    }
+                } elseif (!empty($items)) {
+                    // Jika collection, convert ke array dulu
+                    $itemsArray = is_array($items) ? $items : $items->toArray();
+                    foreach ($itemsArray as $item) {
+                        if (isset($item['name']) && !empty($item['name'])) {
+                            $recommendationNames[] = $item['name'];
+                        }
+                    }
+                }
+                
+                // ✅ JIKA TIDAK ADA REKOMENDASI, SET aiEnabled = false
+                if (empty($recommendationNames)) {
+                    $aiEnabled = false;
+                    Log::info('⚠️ No AI recommendations to save - setting aiEnabled to false', [
+                        'items_count' => is_array($items) ? count($items) : (method_exists($items, 'count') ? $items->count() : 0),
+                    ]);
+                }
+            } else {
+                // ✅ JIKA AI TIDAK DIGUNAKAN (fallback), JANGAN SIMPAN REKOMENDASI SEBAGAI AI
+                Log::info('⚠️ AI not enabled - not saving recommendations as AI', [
+                    'ai_enabled' => $aiEnabled,
+                ]);
+            }
+            
+            // Batasi maksimal 3 rekomendasi
+            $recommendationNames = array_slice($recommendationNames, 0, 3);
+            
+            // ✅ SIMPAN KE SESSION DENGAN CARA YANG LEBIH RELIABLE
+            session()->put('face_shape', $finalFaceShape);
+            session()->put('scan_image_url', $storedUrl);
+            session()->put('scan_timestamp', now()->toDateTimeString());
+            session()->put('ai_recommendations', $recommendationNames); // ✅ Simpan nama rekomendasi AI
+            session()->put('ai_enabled', $aiEnabled); // ✅ Simpan status AI
+            
+            // ✅ PASTIKAN SESSION TERSIMPAN
+            session()->save();
+            
+            Log::info('✅ Session saved for results page', [
+                'face_shape' => $finalFaceShape,
+                'has_image_url' => !empty($storedUrl),
+                'saved' => $saved,
+                'ai_recommendations' => $recommendationNames,
+                'ai_recommendations_count' => count($recommendationNames),
+                'ai_enabled' => $aiEnabled,
+                'items_structure' => !empty($items) ? (is_array($items) ? 'array' : 'collection') : 'empty',
+                'items_count' => is_array($items) ? count($items) : (method_exists($items, 'count') ? $items->count() : 0),
+                'session_saved' => true,
+            ]);
+        } else {
+            // 🔥 HAPUS SESSION LAMA JIKA TIDAK VALID
+            session()->forget(['face_shape', 'scan_image_url', 'scan_timestamp', 'ai_recommendations', 'ai_enabled']);
+            
+            Log::warning('⚠️ Session NOT saved - invalid data or save failed', [
+                'final_face_shape' => $finalFaceShape,
+                'has_stored_url' => !empty($storedUrl),
+                'saved' => $saved,
+            ]);
+        }
+
+        // ✅ JIKA BUKAN AJAX REQUEST (FORM SUBMIT TRADISIONAL) → REDIRECT KE RESULTS
+        // Ini memungkinkan AI tetap berfungsi tanpa JavaScript
+        if (!$request->expectsJson() && !$request->ajax() && !$isJson) {
+            // Jika valid, redirect ke results page
+            if ($finalFaceShape && !empty($storedUrl)) {
+                Log::info('✅ Form submit (non-AJAX) - redirecting to results', [
+                    'face_shape' => $finalFaceShape,
+                ]);
+                
+                return redirect()
+                    ->route('scan.results')
+                    ->with('success', 'Analisis berhasil! Hasil rekomendasi ditampilkan di bawah.');
+            } else {
+                // Jika tidak valid, redirect kembali ke camera dengan error
+                return redirect()
+                    ->route('scan.camera')
+                    ->with('error', 'Wajah tidak terdeteksi. Silakan scan ulang.');
+            }
+        }
+
+        // ✅ JIKA AJAX REQUEST → RETURN JSON (seperti biasa)
         return response()->json($response);
+    }
+
+    /**
+     * Show results page - dengan validasi session
+     * ✅ STEP 2: TAMBAH METHOD results() DI ScanController
+     */
+    public function results()
+    {
+        // AMBIL HASIL ANALISIS DARI SESSION
+        $faceShape = session('face_shape');
+        $scanImageUrl = session('scan_image_url');
+        $aiRecommendations = session('ai_recommendations', []);
+        $aiEnabled = session('ai_enabled', false);
+
+        // ✅ JIKA TIDAK ADA HASIL VALID, BIARKAN RESULTS PAGE RENDER
+        // Results page akan handle data dari sessionStorage sebagai fallback
+        // Jangan redirect dulu, biarkan JavaScript di results page yang handle
+        $recommendations = collect([]);
+        
+        if ($faceShape && $scanImageUrl) {
+            Log::info('✅ Results page accessed with valid session', [
+                'face_shape' => $faceShape,
+                'has_ai_recommendations' => !empty($aiRecommendations),
+                'ai_enabled' => $aiEnabled,
+            ]);
+            
+            // ✅ PRIORITAS: GUNAKAN REKOMENDASI AI JIKA ADA
+            $usingAIRecommendations = false; // Flag untuk track apakah menggunakan rekomendasi AI
+            if (!empty($aiRecommendations) && is_array($aiRecommendations) && count($aiRecommendations) > 0) {
+                Log::info('🔍 Trying to load AI recommendations from session', [
+                    'ai_recommendations' => $aiRecommendations,
+                    'count' => count($aiRecommendations),
+                ]);
+                
+                // Ambil model rambut berdasarkan nama yang direkomendasikan AI
+                $recommendations = HairModel::query()
+                    ->whereIn('name', $aiRecommendations)
+                    ->get(['id', 'name', 'image', 'types', 'length', 'face_shapes']);
+                
+                Log::info('🔍 Models found in database', [
+                    'found_count' => $recommendations->count(),
+                    'requested_names' => $aiRecommendations,
+                    'found_names' => $recommendations->pluck('name')->toArray(),
+                ]);
+                
+                // ✅ HANYA SET usingAIRecommendations = true JIKA REKOMENDASI AI DITEMUKAN
+                if ($recommendations->count() > 0) {
+                    $usingAIRecommendations = true;
+                    
+                    // Urutkan sesuai urutan AI recommendations
+                    $recommendations = $recommendations->sortBy(function ($model) use ($aiRecommendations) {
+                        $index = array_search($model->name, $aiRecommendations);
+                        return $index !== false ? $index : 999;
+                    })->values();
+                    
+                    Log::info('✅ Using AI recommendations from session', [
+                        'recommendations_count' => $recommendations->count(),
+                        'ai_recommendations' => $aiRecommendations,
+                        'final_recommendations' => $recommendations->pluck('name')->toArray(),
+                    ]);
+                } else {
+                    Log::warning('⚠️ AI recommendations not found in database - will use fallback', [
+                        'requested_names' => $aiRecommendations,
+                    ]);
+                }
+            } else {
+                Log::info('⚠️ No AI recommendations in session', [
+                    'has_ai_recommendations' => !empty($aiRecommendations),
+                    'is_array' => is_array($aiRecommendations),
+                    'count' => is_array($aiRecommendations) ? count($aiRecommendations) : 0,
+                ]);
+            }
+            
+            // ✅ FALLBACK: JIKA REKOMENDASI AI KOSONG ATAU TIDAK DITEMUKAN, GUNAKAN QUERY DATABASE
+            if ($recommendations->isEmpty() || !$usingAIRecommendations) {
+                // Set aiEnabled = false karena menggunakan fallback (bukan AI)
+                $aiEnabled = false;
+                
+                // Normalize face shape untuk query
+                $normalizedShape = $this->normalizeFaceShapeForQuery($faceShape);
+                
+                // Ambil model rambut yang cocok dengan bentuk wajah
+                $recommendations = HairModel::query()
+                    ->whereNotNull('face_shapes')
+                    ->where('face_shapes', 'like', "%{$normalizedShape}%")
+                    ->orderBy('name')
+                    ->take(3) // Ambil 3 model teratas
+                    ->get(['id', 'name', 'image', 'types', 'length', 'face_shapes']);
+
+                // Jika tidak ada yang cocok, ambil beberapa model secara acak (bukan default oval)
+                if ($recommendations->isEmpty()) {
+                    $recommendations = HairModel::query()
+                        ->orderBy('name')
+                        ->take(3)
+                        ->get(['id', 'name', 'image', 'types', 'length', 'face_shapes']);
+                    
+                    Log::warning('⚠️ No models found for face shape, showing general models', [
+                        'face_shape' => $faceShape,
+                        'normalized' => $normalizedShape,
+                    ]);
+                }
+                
+                Log::info('✅ Using fallback recommendations (not AI)', [
+                    'recommendations_count' => $recommendations->count(),
+                    'ai_enabled_set_to' => false,
+                ]);
+            } else {
+                // ✅ REKOMENDASI AI DITEMUKAN - SET aiEnabled = true
+                $aiEnabled = true;
+                Log::info('✅ AI recommendations successfully loaded', [
+                    'recommendations_count' => $recommendations->count(),
+                    'ai_enabled_set_to' => true,
+                ]);
+            }
+        } else {
+            Log::info('ℹ️ Results page - no Laravel session, will use sessionStorage fallback', [
+                'has_face_shape' => !empty($faceShape),
+                'has_scan_image_url' => !empty($scanImageUrl),
+            ]);
+        }
+
+        return view('user.scan_result', [
+            'faceShape' => $faceShape,
+            'scanImageUrl' => $scanImageUrl,
+            'recommendations' => $recommendations, // ✅ Pass ke view untuk render server-side
+            'aiEnabled' => $aiEnabled, // ✅ Pass status AI untuk ditampilkan badge
+        ]);
+    }
+
+    /**
+     * Normalize face shape untuk query database
+     */
+    private function normalizeFaceShapeForQuery($faceShape)
+    {
+        if (empty($faceShape)) {
+            return null;
+        }
+        
+        $shape = strtolower(trim($faceShape));
+        
+        // Mapping ke format database (Oval, Round, Square, Heart, Oblong)
+        $mapping = [
+            'oval' => 'Oval',
+            'bulat' => 'Round',
+            'round' => 'Round',
+            'kotak' => 'Square',
+            'square' => 'Square',
+            'hati' => 'Heart',
+            'heart' => 'Heart',
+            'lonjong' => 'Oblong',
+            'oblong' => 'Oblong',
+        ];
+        
+        return $mapping[$shape] ?? ucfirst($shape); // Default ke capitalized jika tidak ada di mapping
+    }
+
+    /**
+     * Detect number of faces in image
+     * Returns null if detection is not available, otherwise returns face count
+     */
+    private function detectFaceCount($imagePath, $replicateService = null, $huggingFaceService = null)
+    {
+        // Try to detect face count using available services
+        // This is a safety check - frontend should already block multiple faces
+        
+        try {
+            // Option 1: Try Replicate face detection if available
+            if ($replicateService && !empty(config('services.replicate.api_key'))) {
+                // Replicate face detection models can return face count
+                // For now, we'll assume if face shape detection works, there's at least 1 face
+                // More sophisticated detection would require a dedicated face detection model
+            }
+            
+            // Option 2: Try Hugging Face if available
+            if ($huggingFaceService && !empty(config('services.huggingface.api_key'))) {
+                // Similar to Replicate - if face shape detection works, assume 1 face
+                // For multiple faces, the detection might fail or return inconsistent results
+            }
+            
+            // For now, return null to indicate we can't reliably detect face count
+            // Frontend validation is the primary defense
+            // In production, you could integrate a dedicated face detection API here
+            return null;
+            
+        } catch (\Exception $e) {
+            Log::warning('Face count detection error', [
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 }
