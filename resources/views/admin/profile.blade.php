@@ -84,6 +84,37 @@
         </div>
     </div>
 
+    <!-- QR Code untuk Scan User -->
+    <div class="rounded-2xl ring-1 ring-stone-200 bg-white p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-lg font-bold">QR Code untuk Scan User</h2>
+                <p class="text-sm text-stone-600 mt-1">Scan QR code ini untuk mengarahkan user ke halaman home</p>
+            </div>
+        </div>
+        <div class="flex flex-col items-center gap-4">
+            <div class="bg-white p-4 rounded-xl ring-1 ring-stone-200 inline-block">
+                <div id="qrcode-container" class="w-64 h-64 flex items-center justify-center">
+                    <div class="text-stone-400 text-sm">Loading QR Code...</div>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="printQRCode()" class="px-6 py-2 rounded-xl bg-pink-600 text-white hover:bg-pink-700 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Cetak QR Code
+                </button>
+                <button onclick="downloadQRCode()" class="px-6 py-2 rounded-xl bg-stone-100 text-stone-700 hover:bg-stone-200 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const c = id => document.getElementById(id);
@@ -100,7 +131,95 @@
             if (notif) setTimeout(()=>notif.classList.add('hidden'), 5000);
             const err = document.getElementById('center-error');
             if (err) setTimeout(()=>err.classList.add('hidden'), 5000);
+
+            // Generate QR Code menggunakan API online
+            const homeUrl = '{{ route("user.home") }}';
+            const qrContainer = document.getElementById('qrcode-container');
+            if (qrContainer) {
+                const qrImg = document.createElement('img');
+                const encodedUrl = encodeURIComponent(homeUrl);
+                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodedUrl}`;
+                qrImg.alt = 'QR Code';
+                qrImg.className = 'w-64 h-64';
+                qrImg.onload = function() {
+                    qrContainer.innerHTML = '';
+                    qrContainer.appendChild(qrImg);
+                    window.qrImg = qrImg;
+                };
+                qrImg.onerror = function() {
+                    qrContainer.innerHTML = '<div class="text-red-500 text-sm">Error loading QR Code. Silakan refresh halaman.</div>';
+                };
+            }
         });
+
+        function printQRCode() {
+            const homeUrl = '{{ route("user.home") }}';
+            const encodedUrl = encodeURIComponent(homeUrl);
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodedUrl}`;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Cetak QR Code - Trendy Salon</title>
+                        <style>
+                            body {
+                                margin: 0;
+                                padding: 40px;
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                min-height: 100vh;
+                                font-family: Arial, sans-serif;
+                            }
+                            .qr-container {
+                                text-align: center;
+                            }
+                            .qr-container img {
+                                max-width: 400px;
+                                height: auto;
+                                border: 2px solid #000;
+                                padding: 20px;
+                                background: white;
+                            }
+                            .qr-title {
+                                font-size: 24px;
+                                font-weight: bold;
+                                margin-bottom: 20px;
+                            }
+                            .qr-subtitle {
+                                font-size: 14px;
+                                color: #666;
+                                margin-top: 20px;
+                            }
+                            @media print {
+                                body {
+                                    padding: 0;
+                                }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="qr-container">
+                            <div class="qr-title">QR Code Trendy Salon</div>
+                            <img src="${qrUrl}" alt="QR Code" onload="window.focus(); window.print();" />
+                            <div class="qr-subtitle">Scan untuk mengakses halaman home</div>
+                        </div>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        function downloadQRCode() {
+            const homeUrl = '{{ route("user.home") }}';
+            const encodedUrl = encodeURIComponent(homeUrl);
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodedUrl}`;
+            const link = document.createElement('a');
+            link.download = 'qrcode-scan-user.png';
+            link.href = qrUrl;
+            link.click();
+        }
     </script>
 </div>
 @endsection
