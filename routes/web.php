@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\ReportsExportController;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 // Halaman User Home
 Route::get('/', [UserHomeController::class, 'index'])->name('user.home');
@@ -63,6 +64,21 @@ Route::get('/admin/profile', function () {
     if (!session('admin_logged_in')) return redirect()->route('admin.login');
     return view('admin.profile');
 })->name('admin.profile');
+// Generate QR Code untuk scan user (arahkan ke home)
+Route::get('/admin/profile/qrcode', function () {
+    if (!session('admin_logged_in')) return redirect()->route('admin.login');
+    $homeUrl = route('user.home');
+    try {
+        $qrCode = QrCode::format('png')
+            ->size(400)
+            ->generate($homeUrl);
+        return response($qrCode, 200, ['Content-Type' => 'image/png']);
+    } catch (\Exception $e) {
+        // Fallback ke API online jika library error
+        $encodedUrl = urlencode($homeUrl);
+        return redirect("https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={$encodedUrl}");
+    }
+})->name('admin.profile.qrcode');
 // Upload Foto Profil Admin
 Route::post('/admin/profile/photo', function (Request $request) {
     if (!session('admin_logged_in')) return redirect()->route('admin.login');
